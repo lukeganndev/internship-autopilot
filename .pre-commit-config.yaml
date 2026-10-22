@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: block-private-data
+        name: Block personal data and secrets
+        entry: uv run python scripts/check_private.py
+        language: system
+        pass_filenames: true

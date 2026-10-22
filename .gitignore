@@ -1,0 +1,28 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets
+.env
+.private-terms
+*client_secret*.json
+*credentials*.json
+*token*.json
+
+# Personal data (lives in %LOCALAPPDATA%\internship-autopilot by default; these catch overrides)
+data/
+out/
+browser-profile/
+*.db
+*.sqlite
+*.sqlite3
+/profile.yaml
+/answers.yaml
+*.bak
+
+# LaTeX build output
+*.aux
+*.log
+*.out

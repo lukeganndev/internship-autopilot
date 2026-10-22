@@ -1,0 +1,33 @@
+# FAKE demo answers. Not a real person.
+legal_first_name: Alex
+legal_last_name: Rivera
+preferred_name: Alex
+school: State University
+degree: B.S. in Computer Science, Cybersecurity Concentration
+gpa: "3.72"
+graduation: May 2029
+class_standing: Sophomore
+earliest_start: May 2027
+us_citizen: true
+authorized_to_work_us: true
+needs_sponsorship: false
+willing_to_relocate: true
+address:
+  street: 123 Example St
+  city: Springfield
+  state: IL
+  zip: "62701"
+  country: United States
+phone: (555) 010-4477
+email_personal: alex.rivera@example.com
+email_school: arivera@student.example.edu
+links:
+  github: https://github.com/example-alex
+  linkedin: https://www.linkedin.com/in/example-alex
+how_did_you_hear: Company careers website
+eeo:
+  gender: Decline to self-identify
+  race_ethnicity: Decline to self-identify
+  hispanic_latino: Decline to self-identify
+  veteran: I am not a protected veteran
+  disability: Decline to self-identify

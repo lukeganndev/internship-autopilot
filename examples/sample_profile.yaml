@@ -1,0 +1,72 @@
+# FAKE demo profile. Not a real person. Used by tests and `iap resume --profile examples/sample_profile.yaml`.
+name: Alex Rivera
+contact:
+  email: alex.rivera@example.com
+  phone: (555) 010-4477
+  github: https://github.com/example-alex
+  linkedin: https://www.linkedin.com/in/example-alex
+education:
+  - school: State University
+    location: Springfield, IL
+    degree: B.S. in Computer Science, Cybersecurity Concentration
+    minors: [Mathematics, Electrical Engineering]
+    gpa: "3.72"
+    start: Aug 2025
+    end: May 2029
+    coursework: [Data Structures & Algorithms, Discrete Math, Computer Organization, Intro to Security, Linear Algebra]
+projects:
+  - name: PacketScope
+    tech: [Python, Scapy, SQLite, Flask]
+    link: https://github.com/example-alex/packetscope
+    start: Jan 2026
+    end: Present
+    bullets:
+      - Built a home-network traffic analyzer that flags port scans and unusual DNS lookups using Scapy
+      - Stored 2M+ packet summaries in SQLite with indexed queries, cutting dashboard load time from 9s to under 1s
+      - Wrote 40 pytest cases covering the detection rules and parser edge cases
+  - name: CTF Writeup Generator
+    tech: [Go, Markdown, GitHub Actions]
+    start: Oct 2025
+    end: Dec 2025
+    bullets:
+      - Wrote a CLI that turns terminal session logs into formatted CTF writeups for the campus security club
+      - Set up GitHub Actions to lint and publish writeups to the club site on every merge
+  - name: Line-Following Robot
+    tech: [C, STM32, KiCad]
+    start: Sep 2025
+    end: Nov 2025
+    bullets:
+      - Programmed PID control for an STM32-based robot reading five IR sensors at 1 kHz
+      - Designed a two-layer sensor PCB in KiCad with a teammate for the EE intro lab
+experience:
+  - role: Undergraduate Research Assistant
+    org: State University Systems Lab
+    location: Springfield, IL
+    start: Feb 2026
+    end: Present
+    bullets:
+      - Benchmarked three Linux sandboxing approaches (seccomp, gVisor, Firecracker) for a faculty research project
+      - Automated benchmark runs with Bash and Python, replacing a manual 2-hour process per run
+skills:
+  Languages: [Python, C, Go, Java, SQL, Bash]
+  Frameworks & Libraries: [Flask, Scapy, pytest]
+  Developer Tools: [Git, Linux, Docker, GitHub Actions, VS Code]
+  Security: [Wireshark, Burp Suite, Nmap, Ghidra]
+  Hardware & Embedded: [STM32, KiCad, Oscilloscope]
+activities:
+  - role: Member, CTF Team
+    org: Cybersecurity Club
+    location: Springfield, IL
+    start: Aug 2025
+    end: Present
+    bullets:
+      - Compete in monthly CTFs focused on web exploitation and reverse engineering
+awards:
+  - name: Dean's List
+    issuer: State University
+    date: Fall 2025
+certifications:
+  - name: CompTIA Security+
+    issuer: CompTIA
+    date: Expected May 2026
+exclude_terms: [Rivera Lawn Care]

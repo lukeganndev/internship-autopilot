@@ -1,0 +1,151 @@
+<# Jake's Resume (MIT, https://github.com/jakegut/resume), adapted for tectonic/XeTeX. #>
+<# Jinja uses angle-bracket delimiters (see resume.ENV) so LaTeX braces stay untouched. #>
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{iftex}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\ifPDFTeX
+  \input{glyphtounicode}
+  \pdfgentounicode=1
+\fi
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+\newcommand{\resumeItem}[1]{\item\small{{#1 \vspace{-2pt}}}}
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+<% macro bullets(item) %>
+<% if item.bullets %>
+      \resumeItemListStart
+<% for b in item.bullets %>
+        \resumeItem{<< b.text|e >>}
+<% endfor %>
+      \resumeItemListEnd
+<% endif %>
+<% endmacro %>
+
+<% macro roles(title, items) %>
+<% if items %>
+\section{<< title|e >>}
+  \resumeSubHeadingListStart
+<% for x in items %>
+    \resumeSubheading{<< x.role|e >>}{<< x|dates >>}{<< x.org|e >>}{<< x.location|e >>}
+<< bullets(x) >>
+<% endfor %>
+  \resumeSubHeadingListEnd
+<% endif %>
+<% endmacro %>
+
+<% macro simple_list(title, items) %>
+<% if items %>
+\section{<< title >>}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+<% for a in items %>
+     \textbf{<< a.name|e >>}<% if a.issuer %>, << a.issuer|e >><% endif %><% if a.date %> \hfill << a.date|e >><% endif %><% if not loop.last %> \\<% endif %>
+
+<% endfor %>
+    }}
+ \end{itemize}
+<% endif %>
+<% endmacro %>
+
+\begin{document}
+
+\begin{center}
+    \textbf{\Huge \scshape << p.name|e >>} \\ \vspace{1pt}
+    \small << header >>
+\end{center}
+
+\section{Education}
+  \resumeSubHeadingListStart
+<% for ed in p.education %>
+    \resumeSubheading{<< ed.school|e >>}{<< ed.location|e >>}{<< ed.degree|e >><% if ed.gpa %>; GPA: << ed.gpa|e >><% endif %>}{<< ed|dates >>}
+<% if ed.minors or ed.coursework %>
+      \resumeItemListStart
+<% if ed.minors %>
+        \resumeItem{\textbf{Minors:} << ed.minors|join(", ")|e >>}
+<% endif %>
+<% if ed.coursework %>
+        \resumeItem{\textbf{Relevant Coursework:} << ed.coursework|join(", ")|e >>}
+<% endif %>
+      \resumeItemListEnd
+<% endif %>
+<% endfor %>
+  \resumeSubHeadingListEnd
+
+<< roles("Experience", p.experience) >>
+
+<% if p.projects %>
+\section{Projects}
+  \resumeSubHeadingListStart
+<% for x in p.projects %>
+    \resumeProjectHeading{<% if x.link %>\href{<< x.link|url >>}{\textbf{<< x.name|e >>}}<% else %>\textbf{<< x.name|e >>}<% endif %><% if x.tech %> $|$ \emph{<< x.tech|join(", ")|e >>}<% endif %>}{<< x|dates >>}
+<< bullets(x) >>
+<% endfor %>
+  \resumeSubHeadingListEnd
+<% endif %>
+
+<% if p.skills %>
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+<% for cat, items in p.skills.items() %>
+     \textbf{<< cat|e >>}{: << items|join(", ")|e >>}<% if not loop.last %> \\<% endif %>
+
+<% endfor %>
+    }}
+ \end{itemize}
+<% endif %>
+
+<< roles("Leadership & Activities", p.activities) >>
+<< simple_list("Awards", p.awards) >>
+<< simple_list("Certifications", p.certifications) >>
+
+\end{document}
