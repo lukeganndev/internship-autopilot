@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 from enum import Enum
@@ -6,7 +7,7 @@ from pathlib import Path
 import typer
 import yaml
 
-from . import config, profile as prof, resume
+from . import config, db, profile as prof, resume
 
 app = typer.Typer(no_args_is_help=True, help="Internship Autopilot: source, score, tailor, autofill. Never auto-submits.")
 profile_app = typer.Typer(no_args_is_help=True, help="View and update your master profile.")
@@ -31,7 +32,7 @@ def init():
     typer.secho(f"\nSaved {config.PROFILE}\nSaved {config.ANSWERS}", fg="green")
     _report(p)
     if typer.confirm("Build your resume PDF now?", default=True):
-        build_resume()
+        build_resume(profile_path=None, open_pdf=True)
 
 
 class Kind(str, Enum):
@@ -96,6 +97,77 @@ def show():
     """Summary of the profile plus any validation problems."""
     typer.echo(f"Profile: {config.PROFILE}\nAnswers: {config.ANSWERS}")
     _report(prof.load())
+
+
+@app.command()
+def source(no_boards: bool = typer.Option(False, "--no-boards", help="Only read the GitHub lists (fast).")):
+    """Fetch new internships from all sources, filter, dedupe, store. Toasts on dream companies."""
+    from .sources import run
+
+    stats = run.run(use_boards=False if no_boards else None)
+    typer.echo(json.dumps(stats, indent=2))
+
+
+@app.command()
+def refilter():
+    """Re-apply filters and the dream-company watchlist to all stored jobs."""
+    from .sources import run
+
+    typer.echo(run.refilter(db.connect()))
+
+
+@app.command()
+def jobs(
+    limit: int = typer.Option(30, "-n"),
+    all_jobs: bool = typer.Option(False, "--all", help="Include filtered-out jobs with the reason."),
+    dream: bool = typer.Option(False, "--dream", help="Only dream-company jobs."),
+    search: str = typer.Option("", "-s", help="Filter company/title by text."),
+):
+    """List stored jobs, newest first."""
+    con = db.connect()
+    where = ["active=1"]
+    where += [] if all_jobs else ["excluded_reason IS NULL"]
+    where += ["is_dream=1"] if dream else []
+    args = []
+    if search:
+        where.append("(company LIKE ? OR title LIKE ?)")
+        args += [f"%{search}%"] * 2
+    rows = con.execute(
+        f"SELECT * FROM jobs WHERE {' AND '.join(where)} ORDER BY first_seen DESC, posted_at DESC LIMIT ?", (*args, limit)
+    ).fetchall()
+    for r in rows:
+        star = "*" if r["is_dream"] else " "
+        note = r["excluded_reason"] or ", ".join(json.loads(r["flags"]))
+        typer.echo(f"{star}{r['id']:>6}  {r['company'][:22]:<22}  {r['title'][:52]:<52}  {r['location'][:24]:<24}  {note}")
+    total = con.execute("SELECT count(*) FROM jobs WHERE active=1 AND excluded_reason IS NULL").fetchone()[0]
+    typer.echo(f"\n{len(rows)} shown, {total} eligible active jobs total. * = dream company")
+
+
+@app.command("add")
+def add_job(url: str):
+    """Import one listing by URL. LinkedIn/Handshake/Indeed pages are never fetched: you paste the details."""
+    from .sources import run
+    from .sources.common import Job
+
+    info = {}
+    if run.no_fetch(url):
+        typer.secho("This site bans automated access, so it won't be fetched. If the posting links to the company's "
+                    "own application page, run `iap add` with that URL instead.", fg="yellow")
+    else:
+        try:
+            info = run.fetch_listing(url)
+        except Exception as e:
+            typer.secho(f"Couldn't read the page ({e}); enter the details by hand.", fg="yellow")
+    company = prof.ask("Company", info.get("company", ""))
+    title = prof.ask("Title", info.get("title", ""))
+    location = prof.ask("Location", info.get("location", ""))
+    description = info.get("description", "")
+    if not description:
+        description = "\n".join(prof.ask_lines("Paste the job description"))
+    jid, is_new, warning = run.import_job(db.connect(), Job("manual", company, title, url, location=location, description=description))
+    typer.secho(f"{'Added' if is_new else 'Already tracked as'} job {jid}: {company} — {title}", fg="green")
+    if warning:
+        typer.secho(f"Heads up: the filters would normally skip this ({warning}). Kept because you added it.", fg="yellow")
 
 
 @app.command("resume")

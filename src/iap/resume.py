@@ -7,6 +7,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from pypdf import PdfReader
 
+from . import config
 from .profile import find_excluded
 
 _TEX = {
@@ -30,7 +31,8 @@ def short_url(u: str) -> str:
 
 
 def dates(item) -> str:
-    return " -- ".join(tex(item[k]) for k in ("start", "end") if item.get(k))
+    parts = list(dict.fromkeys(tex(item[k]) for k in ("start", "end") if item.get(k)))  # "Oct 2026" once, not twice
+    return " -- ".join(parts)
 
 
 def header(c: dict) -> str:
@@ -60,9 +62,9 @@ def render_tex(p: dict) -> str:
 
 
 def find_tectonic() -> str:
-    exe = shutil.which("tectonic") or Path(os.environ.get("LOCALAPPDATA", "")) / "Programs/tectonic/tectonic.exe"
+    exe = shutil.which("tectonic") or config.HOME / "bin" / ("tectonic.exe" if os.name == "nt" else "tectonic")
     if not Path(exe).exists():
-        raise FileNotFoundError("tectonic not found. See README > Setup for the one-line install.")
+        raise FileNotFoundError("tectonic not found. See README > Setup for the install command.")
     return str(exe)
 
 

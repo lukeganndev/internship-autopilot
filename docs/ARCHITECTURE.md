@@ -38,14 +38,18 @@ iap mail sync (each source pass) → status updates + change log
 
 ## Data location
 
-All personal data lives in `%LOCALAPPDATA%\internship-autopilot` (override with `IAP_DATA_DIR`):
+Everything machine-local lives in `~\.internship-autopilot\`:
 
 ```
-profile.yaml   answers.yaml   app.db   out/   browser-profile/   tokens (in Credential Manager)
+data/   profile.yaml  answers.yaml  app.db  out/  logs/  browser-profile/   (override with IAP_DATA_DIR)
+venv/   the Python environment (.venv in the repo is a junction to it)
+bin/    tectonic.exe
 ```
 
-It is deliberately outside the repo **and** outside OneDrive: cloud sync corrupts open SQLite and
-Chromium profile files, and would upload saved logins.
+It is deliberately outside the repo, outside OneDrive (cloud sync locks venv files, corrupts open
+SQLite/Chromium files, and would upload saved logins), and outside `AppData` (packaged Windows
+apps such as the Claude desktop app see a private, redirected copy of `AppData`, so a file written
+there by one tool can be invisible to another).
 
 ## Master profile
 

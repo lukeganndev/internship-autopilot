@@ -12,14 +12,14 @@ reviews and clicks it.
 - **Never submits.** Autofill adapters have no submit method. CAPTCHAs, account creation and submit buttons pause for the human.
 - **Never invents.** Tailored bullets must cite the id of a real bullet in the master profile; anything that adds new skills or numbers is rejected and shown as a gap instead.
 - **No LinkedIn/Handshake bots.** Those sites ban automation. Paste a listing URL to import it instead.
-- **Personal data never touches the repo.** It lives in `%LOCALAPPDATA%\internship-autopilot`, and a pre-commit hook blocks personal-data files, secrets, and your actual phone/email/address.
+- **Personal data never touches the repo.** It lives in `~\.internship-autopilot\data`, and a pre-commit hook blocks personal-data files, secrets, and your actual phone/email/address.
 
 ## Status
 
 | Phase | What | Status |
 |---|---|---|
 | 1 | Master profile interview + Jake's Resume PDF | ✅ |
-| 2 | Job sourcing (GitHub lists, Greenhouse, Lever, Ashby, Workday, SmartRecruiters) | ⏳ |
+| 2 | Job sourcing (GitHub lists, Greenhouse, Lever, Ashby, Workday, SmartRecruiters, Oracle, Amazon, Microsoft) | ✅ |
 | 3 | Fit scoring with reasons | ⏳ |
 | 4 | Claude Code tailoring + ATS check | ⏳ |
 | 5 | Playwright autofill (stops before submit) | ⏳ |
@@ -31,11 +31,13 @@ reviews and clicks it.
 ```powershell
 winget install astral-sh.uv
 # Tectonic (LaTeX engine; fetches packages on first build)
-$d="$env:LOCALAPPDATA\Programs\tectonic"; mkdir $d -Force
+$d="$HOME\.internship-autopilot\bin"; mkdir $d -Force
 iwr https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-pc-windows-msvc.zip -OutFile t.zip
 Expand-Archive t.zip $d; rm t.zip
 
 git clone https://github.com/lukeganndev/internship-autopilot && cd internship-autopilot
+# If the repo is under OneDrive, keep the venv out of it (OneDrive locks venv files):
+#   mkdir $HOME\.internship-autopilot\venv; cmd /c mklink /J .venv $HOME\.internship-autopilot\venv
 uv sync
 uv run pre-commit install      # personal-data / secrets guard
 ```
@@ -52,7 +54,28 @@ uv run iap profile show
 
 # Demo without personal data:
 uv run iap resume --profile examples/sample_profile.yaml
+
+# Job sourcing
+uv run iap source                    # one pass over every source (first run takes a few minutes)
+uv run iap jobs                      # newest eligible jobs (--all shows filtered ones + why, --dream, -s text)
+uv run iap add <url>                 # import a listing you found yourself
+.\scripts\install_tasks.ps1          # run `iap source` every 2h + at logon (Task Scheduler)
 ```
+
+### Where jobs come from
+
+1. **GitHub lists**: SimplifyJobs and vanshb03 (`listings.json`), speedyapply (README tables).
+2. **Company boards discovered from those lists**: every Greenhouse, Lever, Ashby, Workday,
+   SmartRecruiters and Oracle board that posted an internship in the last ~13 months is polled
+   directly through its public JSON API, so new postings show up before the lists catch them.
+3. **Amazon and Microsoft** search APIs.
+4. **`iap add <url>`** for anything else. LinkedIn, Handshake, Indeed and Glassdoor pages are never
+   fetched (their terms ban automation); you paste the details instead.
+
+Every posting is keyed by its ATS id, so the same job from five sources is stored once.
+Hard filters drop non-internships, PhD/MBA roles, non-US, unpaid, seasons already under way,
+and postings that require graduating before your grad year or senior standing. Sophomore-friendly
+wording overrides the class-year rules. Dream-company postings trigger a Windows notification.
 
 ## Development
 
