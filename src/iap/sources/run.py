@@ -53,8 +53,9 @@ async def _bounded(coros, budget: float) -> list:
 
 
 async def _poll_boards(c, boards, watch) -> tuple[list[Job], list[tuple[str, bool]], list[str]]:
-    # Dream-company boards first: the per-host semaphores hand out slots in arrival order.
-    boards = sorted(boards, key=lambda b: not filters.is_dream(b["company"], watch))
+    # Dream-company boards first, then the ones polled longest ago, so a budget cutoff rotates
+    # instead of always skipping the same boards. Semaphores hand out slots in arrival order.
+    boards = sorted(boards, key=lambda b: (not filters.is_dream(b["company"], watch), b["last_ok"] or ""))
     results = await _bounded((ats.list_board(c, b) for b in boards), BOARD_BUDGET_S)
     jobs, status, errors = [], [], []
     for b, r in zip(boards, results):

@@ -95,6 +95,14 @@ def test_bounded_returns_results_errors_and_none_for_cutoffs():
     assert ok_r == [1] and isinstance(err_r, ValueError) and slow_r is None
 
 
+def test_workday_tenants_share_a_rate_limit_per_data_center():
+    from iap.sources.common import _limit_key
+
+    assert _limit_key("nvidia.wd5.myworkdayjobs.com") == _limit_key("disney.wd5.myworkdayjobs.com") == "workday-wd5"
+    assert _limit_key("kla.wd1.myworkdayjobs.com") == "workday-wd1"
+    assert _limit_key("boards-api.greenhouse.io") == "boards-api.greenhouse.io"
+
+
 def test_only_missing_boards_count_as_gone():
     import httpx
     from iap.sources.common import is_gone

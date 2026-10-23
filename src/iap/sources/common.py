@@ -147,9 +147,19 @@ def client() -> httpx.AsyncClient:
     )
 
 
+def _limit_key(host: str) -> str:
+    # Workday rate-limits per data center (nvidia.wd5... and disney.wd5... share wd5), not per company.
+    if m := re.search(r"\.(wd\d+)\.myworkdayjobs\.com$", host):
+        return f"workday-{m.group(1)}"
+    return host
+
+
+_LIMITS.update({f"workday-wd{n}": asyncio.Semaphore(4) for n in (1, 3, 5, 12, 103, 108)})
+
+
 async def fetch(c: httpx.AsyncClient, method: str, url: str, **kw) -> httpx.Response:
-    """Polite request: at most 6 in flight per host."""
-    async with _LIMITS[urlsplit(url).netloc]:
+    """Polite request: at most 6 in flight per host (4 per Workday data center, 2 for Microsoft/Amazon)."""
+    async with _LIMITS[_limit_key(urlsplit(url).netloc)]:
         r = await c.request(method, url, **kw)
         r.raise_for_status()
         return r
