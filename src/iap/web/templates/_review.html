@@ -76,4 +76,12 @@
 </section>
 {% endif %}
 
-<p><button disabled title="Comes with Phase 5">Launch autofill (Phase 5)</button></p>
+{% set unapproved = answers|selectattr('approved', 'equalto', 0)|list %}
+<div style="margin:18px 0; padding:14px; border:1px solid var(--line); border-radius:10px">
+  <button class="primary" hx-post="/job/{{ j.id }}/autofill" hx-target="#job-{{ j.id }}" hx-swap="outerHTML">Launch autofill</button>
+  <span class="muted">Opens the application in its own browser window, fills it from your saved answers, uploads this resume, and stops before Submit.</span>
+  {% if unapproved or (t.cover_letter_required and not t.cover_letter_approved) %}
+  <p class="chip warn" style="margin-top:8px">Not approved yet: {{ unapproved|length }} answer(s){% if t.cover_letter_required and not t.cover_letter_approved %} and the cover letter{% endif %}. Autofill leaves those blank for you.</p>
+  {% endif %}
+  {% if launched %}<p class="chip" style="color:var(--good); margin-top:8px">Browser opening… When you've clicked Submit, it marks the job applied automatically (or set the status above).</p>{% endif %}
+</div>

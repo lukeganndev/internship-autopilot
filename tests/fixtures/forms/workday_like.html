@@ -1,0 +1,46 @@
+<!doctype html>
+<html><body>
+<script>window.__clicked = [];</script>
+<div id="step1">
+  <h2>My Information</h2>
+  <div><label for="fn">Given Name(s)</label><input id="fn" aria-required="true"></div>
+  <div><label for="ln">Family Name</label><input id="ln" aria-required="true"></div>
+  <div><label for="city">City</label><input id="city"></div>
+  <div>
+    <label id="hear-label">How Did You Hear About Us?</label>
+    <button id="hear" type="button" aria-haspopup="listbox" aria-labelledby="hear-label" onclick="window.__clicked.push('hear'); document.getElementById('hear-list').hidden = false">Select One</button>
+    <ul id="hear-list" role="listbox" hidden>
+      <li role="option" onclick="pick('hear', this)">LinkedIn</li>
+      <li role="option" onclick="pick('hear', this)">Company Careers Website</li>
+      <li role="option" onclick="pick('hear', this)">Referral</li>
+    </ul>
+  </div>
+  <fieldset>
+    <legend>Are you at least 18 years of age?</legend>
+    <label><input type="radio" name="adult" value="y"> Yes</label>
+    <label><input type="radio" name="adult" value="n"> No</label>
+  </fieldset>
+  <div>
+    <label for="school">School or University</label>
+    <input id="school" role="combobox" aria-autocomplete="list" oninput="suggest(this.value)">
+    <div id="school-list" role="listbox"></div>
+  </div>
+  <button id="next" type="button" onclick="window.__clicked.push('next')">Save and Continue</button>
+  <button id="submit" type="button" onclick="window.__clicked.push('submit')">Submit</button>
+</div>
+<script>
+  function pick(id, li) {
+    window.__clicked.push('option:' + li.textContent);
+    const b = document.getElementById(id); b.textContent = li.textContent; li.parentNode.hidden = true;
+  }
+  const SCHOOLS = ["State University", "State University - Online", "Other State College"];
+  function suggest(v) {
+    const list = document.getElementById("school-list"); list.replaceChildren();
+    for (const s of SCHOOLS.filter((s) => s.toLowerCase().includes(v.toLowerCase()))) {
+      const o = document.createElement("div"); o.setAttribute("role", "option"); o.textContent = s;
+      o.onclick = () => { document.getElementById("school").value = s; list.replaceChildren(); window.__clicked.push("option:" + s); };
+      list.append(o);
+    }
+  }
+</script>
+</body></html>

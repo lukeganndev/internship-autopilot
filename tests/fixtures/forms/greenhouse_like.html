@@ -1,0 +1,50 @@
+<!doctype html>
+<html><body>
+<script>window.__clicked = []; window.__submitted = false;</script>
+<h1>Software Engineering Intern</h1>
+<form id="application_form" onsubmit="window.__submitted = true; return false;">
+  <label for="first_name">First Name *</label><input id="first_name" name="first_name" required>
+  <label for="last_name">Last Name *</label><input id="last_name" name="last_name" required>
+  <label for="preferred">Preferred First Name</label><input id="preferred" name="preferred_name">
+  <label for="email">Email *</label><input id="email" type="email" required>
+  <label for="phone">Phone *</label><input id="phone" type="tel" required value="(000) 000-0000">
+  <!-- Real Greenhouse nesting: the words "Resume/CV" are several boxes above the "Attach" label. -->
+  <div class="field-wrapper"><div class="file-upload">Resume/CV *<div class="wrapper"><div class="buttons">
+    <div><label for="resume">Attach</label><input id="resume" type="file" required></div> Dropbox Enter manually</div></div></div></div>
+  <div class="field-wrapper"><div class="file-upload">Cover Letter<div class="wrapper"><div class="buttons">
+    <div><label for="cover">Attach</label><input id="cover" type="file"></div> Dropbox Enter manually</div></div></div></div>
+  <div><label id="hear-l">How did you hear about this job? *</label>
+    <input id="hear" role="combobox" aria-labelledby="hear-x" placeholder="Select..." oninput="hearOpts(this.value)">
+    <div id="hear-opts"></div></div>
+  <label for="li">LinkedIn Profile</label><input id="li" name="question_1">
+  <label for="school">School *</label><input id="school" required>
+  <label for="gpa">GPA</label><input id="gpa">
+  <label for="auth">Are you legally authorized to work in the United States? *</label>
+  <select id="auth" required><option>Select...</option><option>Yes</option><option>No</option></select>
+  <label for="sponsor">Will you now or in the future require visa sponsorship? *</label>
+  <select id="sponsor" required><option>Select...</option><option>Yes</option><option>No</option></select>
+  <label for="state">State</label>
+  <select id="state"><option>Select...</option><option>Alabama</option><option>Alaska</option></select>
+  <label for="why">Why do you want to work at Acme? *</label><textarea id="why" required></textarea>
+  <label for="challenge">Describe a technical challenge you overcame and what you learned. *</label><textarea id="challenge" required></textarea>
+  <label for="salary">Desired salary</label><input id="salary">
+  <label for="gender">Gender</label>
+  <select id="gender"><option>Please select</option><option>Male</option><option>Female</option><option>Decline To Self Identify</option></select>
+  <label for="vet">Veteran Status</label>
+  <select id="vet"><option>Please select</option><option>I am a protected veteran</option><option>I am not a protected veteran</option><option>I don't wish to answer</option></select>
+  <label><input id="consent" type="checkbox" required> I agree to the privacy policy *</label>
+  <button id="submit" type="submit" onclick="window.__clicked.push('submit')">Submit Application</button>
+</form>
+<script>
+  // react-select style: options only appear after typing; aria-labelledby points at a missing id.
+  function hearOpts(v) {
+    const box = document.getElementById("hear-opts"); box.replaceChildren();
+    for (const s of ["Company Careers Website", "LinkedIn", "University career center"]) {
+      if (!s.toLowerCase().includes(v.toLowerCase().slice(0, 4))) continue;
+      const o = document.createElement("div"); o.setAttribute("role", "option"); o.textContent = s;
+      o.onclick = () => { document.getElementById("hear").value = s; box.replaceChildren(); };
+      box.append(o);
+    }
+  }
+</script>
+</body></html>

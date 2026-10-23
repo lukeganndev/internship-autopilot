@@ -1,5 +1,6 @@
 """Render a profile (or a tailored subset of one) to Jake's Resume LaTeX, compile with tectonic."""
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -76,6 +77,18 @@ def compile_pdf(tex_path: Path) -> Path:
     if r.returncode:
         raise RuntimeError(f"tectonic failed:\n{r.stderr or r.stdout}")
     return tex_path.with_suffix(".pdf")
+
+
+def build_cover_letter(text: str, p: dict, outdir: Path) -> Path:
+    """Approved cover-letter text → PDF for upload fields."""
+    if bad := [t for t in p.get("exclude_terms", []) if t.lower() in text.lower()]:
+        raise ValueError(f"Refusing to render: excluded terms present: {', '.join(bad)}")
+    outdir.mkdir(parents=True, exist_ok=True)
+    paragraphs = [" ".join(x.split()) for x in re.split(r"\n\s*\n", text.strip()) if x.strip()]
+    tex_path = outdir / f"{p['name'].replace(' ', '_')}_Cover_Letter.tex"
+    tex_path.write_text(ENV.get_template("cover.tex.j2").render(p=p, header=header(p["contact"]), paragraphs=paragraphs),
+                        encoding="utf-8")
+    return compile_pdf(tex_path)
 
 
 def build(p: dict, outdir: Path, stem: str | None = None) -> tuple[Path, int]:

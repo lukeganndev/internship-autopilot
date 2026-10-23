@@ -21,3 +21,6 @@ ANSWERS = DATA / "answers.yaml"
 OUT = DATA / "out"
 DB = DATA / "app.db"
 LOGS = DATA / "logs"
+BROWSER_PROFILE = DATA / "browser-profile"  # persistent Chromium profile: portal logins (Workday etc.) stay saved
+# Playwright's Chromium lives with the rest of the machine-local files, not in AppData.
+os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", str(HOME / "browsers"))

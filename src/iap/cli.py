@@ -123,6 +123,17 @@ def dashboard(port: int = typer.Option(8765), open_browser: bool = typer.Option(
     uvicorn.run("iap.web.app:app", host="127.0.0.1", port=port, log_level="warning")
 
 
+@app.command("apply")
+def apply_cmd(job: int):
+    """Open the application in a visible browser and fill it. Stops before submit; close the window when done."""
+    from .autofill.runner import run
+
+    typer.echo("Opening the browser. Review everything and click Submit yourself; close the window when you're done.")
+    r = run(job)
+    typer.echo(f"Filled {r['filled']} field(s). Needs you: {len(r['needs'])}. New questions saved: {len(r['new_questions'])}. "
+               f"Marked applied: {r['applied']}.")
+
+
 @app.command("tailor")
 def tailor_cmd(
     job: int = typer.Option(None, "--job", help="Tailor one job now (any status)."),

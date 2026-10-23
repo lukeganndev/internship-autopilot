@@ -115,6 +115,21 @@ def tailor_now(request: Request, job_id: int):
     return _panel(request, db.connect(), job_id, error=error)
 
 
+@app.post("/job/{job_id}/autofill", response_class=HTMLResponse)
+def launch_autofill(request: Request, job_id: int):
+    """Start the visible autofill browser as its own process, so the dashboard stays responsive."""
+    _require_htmx(request)
+    import subprocess
+    import sys
+
+    con = db.connect()
+    _job(con, job_id)
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    subprocess.Popen([sys.executable, "-m", "iap.autofill", str(job_id)], creationflags=flags,
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return _panel(request, con, job_id, launched=True)
+
+
 @app.post("/job/{job_id}/bullets", response_class=HTMLResponse)
 async def edit_bullets(request: Request, job_id: int):
     """Your edits go through the same verifier as Claude's, then the PDF is re-rendered."""

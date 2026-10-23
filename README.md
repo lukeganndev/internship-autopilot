@@ -22,7 +22,7 @@ reviews and clicks it.
 | 2 | Job sourcing (GitHub lists, Greenhouse, Lever, Ashby, Workday, SmartRecruiters, Oracle, Amazon, Microsoft) | ✅ |
 | 3 | Fit scoring with reasons | ✅ |
 | 4 | Claude Code tailoring + ATS check | ✅ |
-| 5 | Playwright autofill (stops before submit) | ⏳ |
+| 5 | Playwright autofill (stops before submit) | ✅ |
 | 6 | Local dashboard | 🟡 queue, job details, tracker, settings done; review screen + deadlines come with Phases 4-5 |
 | 7 | Gmail/Outlook status sync + outreach drafts | ⏳ |
 
@@ -98,6 +98,34 @@ written when the application requires one, and answers to custom questions (pull
 Greenhouse application forms) are drafts. Both are flagged if they mention numbers or tech not in
 your profile, and nothing is used until you approve it in the dashboard. Edits you make to
 bullets in the dashboard go through the same verifier.
+
+### Autofill (Phase 5)
+
+```powershell
+uv run playwright install chromium   # once (browsers go to ~\.internship-autopilot\browsers)
+uv run iap apply <id>                # or "Launch autofill" on a tailored job in the dashboard
+```
+
+Opens the application in a visible Chromium window with its own persistent profile (portal logins
+like Workday stay saved), fills it, and stops. Greenhouse, Lever and Ashby forms open directly;
+on Workday, iCIMS and other portals you click Apply and Next yourself and it fills each step as
+it appears. A banner on the page shows what it filled and what needs you (outlined in orange).
+
+What it fills: your saved answers (name, contact, address, school, GPA, graduation, work
+authorization, sponsorship, relocation, links, "how did you hear", EEO choices), the tailored
+resume PDF, an approved cover letter, and approved answers to custom questions. Dropdowns, ARIA
+comboboxes and Workday-style listboxes are matched by meaning ("AL" ↔ "Alabama", "B.S. in ..." ↔
+"Bachelor's", "Decline to self-identify" ↔ "I don't wish to answer"). Free-text questions it hasn't
+seen are saved so the next tailoring batch drafts them.
+
+Safety, enforced in `autofill/runner.py`:
+- **Never submits.** Every click goes through one guard that refuses submit buttons and anything
+  labelled submit/apply/next/continue/review/save/sign up/create, and Enter is never pressed.
+- **Never creates accounts or touches CAPTCHAs.** Login, account-creation and CAPTCHA screens pause
+  the run with a banner and a Windows notification; it continues once you've handled them.
+- **Never overwrites** a field that already has a value, never ticks consent boxes, never guesses:
+  uncertain fields are left blank and highlighted.
+- When the page says your application was received, the job is marked **applied** in the tracker.
 
 ### How jobs are scored
 
