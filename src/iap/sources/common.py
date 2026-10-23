@@ -43,6 +43,7 @@ class Job:
     salary: str = ""
     active: bool = True
     key: str = ""
+    deadline: str = ""  # YYYY-MM-DD
 
     def __post_init__(self):
         self.company, self.title = self.company.strip(), " ".join(self.title.split())

@@ -7,6 +7,11 @@
       <div class="muted" style="font-size:13px">
         {{ j.season or 'season not stated' }}{% if j.posted_at %} · posted {{ j.posted_at }}{% endif %} · first seen {{ j.first_seen[:10] }} · via {{ sources|join(', ') }}
       </div>
+      <form hx-post="/job/{{ j.id }}/deadline" hx-target="#job-{{ j.id }}" hx-swap="outerHTML" hx-trigger="change"
+            style="margin-top:4px; font-size:13px">
+        <label>Deadline <input type="date" name="deadline" value="{{ j.deadline or '' }}" style="padding:2px 6px"></label>
+        <span class="muted">{{ 'from the posting or set by you' if j.deadline else 'none stated: add one if you know it' }}</span>
+      </form>
     </div>
   </div>
 

@@ -59,10 +59,28 @@ def queue_page(request: Request, q: str = "", role: str = "", dream: bool = Fals
     total = con.execute(f"SELECT count(*) {sql}", args).fetchone()[0]
     rows = con.execute(f"SELECT j.*, s.score {sql} ORDER BY j.is_dream DESC, s.score DESC, j.first_seen DESC LIMIT ? OFFSET ?",
                        (*args, PAGE, page * PAGE)).fetchall()
+    from .. import reminders
+
     return T.TemplateResponse(request, "queue.html", {
         "nav": _nav(con), "rows": rows, "total": total, "page": page, "pages": (total + PAGE - 1) // PAGE,
         "f": {"q": q, "role": role, "dream": dream, "min_score": min_score}, "roles": ROLES,
+        "due": reminders.due(con, 7),
     })
+
+
+@app.post("/job/{job_id}/deadline", response_class=HTMLResponse)
+def set_deadline(request: Request, job_id: int, deadline: str = Form("")):
+    """Set or clear a job's deadline (postings rarely state one, so you can add it yourself)."""
+    _require_htmx(request)
+    import re
+
+    if deadline and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", deadline):
+        raise HTTPException(400, "deadline must be YYYY-MM-DD")
+    con = db.connect()
+    _job(con, job_id)
+    con.execute("UPDATE jobs SET deadline=? WHERE id=?", (deadline, job_id))
+    con.commit()
+    return _panel(request, con, job_id)
 
 
 def _job(con, job_id: int):
@@ -77,14 +95,18 @@ def _job(con, job_id: int):
 
 def _panel(request: Request, con, job_id: int, tpl: str = "_job.html", **extra):
     r, sources = _job(con, job_id)
-    from .. import outreach
+    from .. import outreach, profile as prof
 
+    try:
+        school = prof.load()["education"][0]["school"]
+    except (FileNotFoundError, IndexError, KeyError):
+        school = ""
     t = con.execute("SELECT * FROM tailored WHERE job_id=?", (job_id,)).fetchone()
     answers = con.execute("SELECT * FROM answers WHERE job_id=? ORDER BY id", (job_id,)).fetchall()
     contacts = con.execute("SELECT * FROM contacts WHERE job_id=? ORDER BY id", (job_id,)).fetchall()
     return T.TemplateResponse(request, tpl, {"j": r, "sources": sources, "statuses": STATUSES, "nav": _nav(con),
                                              "t": t, "spec": json.loads(t["spec"]) if t else None, "answers": answers,
-                                             "contacts": contacts, "search_links": outreach.search_links(r), **extra})
+                                             "contacts": contacts, "search_links": outreach.search_links(r, school), **extra})
 
 
 @app.post("/job/{job_id}/outreach", response_class=HTMLResponse)

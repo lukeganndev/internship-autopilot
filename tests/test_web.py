@@ -126,6 +126,18 @@ def test_tracked_job_shows_outreach_links(client):
     assert "Outreach" in html and "linkedin.com/search/results/people" in html and "Find people" in html
 
 
+def test_set_deadline_and_due_strip(client):
+    from datetime import date, timedelta
+
+    jid = client.ids["swe"]
+    soon = (date.today() + timedelta(days=3)).isoformat()
+    assert client.post(f"/job/{jid}/deadline", data={"deadline": "next week"}, headers=HX).status_code == 400
+    html = client.post(f"/job/{jid}/deadline", data={"deadline": soon}, headers=HX).text
+    assert f'value="{soon}"' in html
+    queue = client.get("/").text
+    assert "Due in the next 7 days" in queue and f"due {soon}" in queue
+
+
 def test_settings_save_threshold_and_watchlist(client):
     assert client.post("/settings", data={"threshold": "strict", "watchlist": "Acme"}).status_code == 403
     r = client.post("/settings", data={"threshold": "30", "watchlist": "Acme\n"}, headers=HX, follow_redirects=False)

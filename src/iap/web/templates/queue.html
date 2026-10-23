@@ -18,6 +18,14 @@
 </style>
 {% endblock %}
 {% block main %}
+{% if due %}
+<div class="panel" style="padding:10px 14px; margin-bottom:12px; border-color:var(--warn)">
+  <strong>Due in the next 7 days</strong>
+  {% for d in due %}
+  <a class="chip" href="/job/{{ d.id }}" style="margin-left:6px">{{ d.deadline[5:] }} · {{ d.company }} · {{ d.title[:40] }}{% if d.status %} ({{ d.status }}){% endif %}</a>
+  {% endfor %}
+</div>
+{% endif %}
 <form class="filters" method="get" action="/">
   <input type="search" name="q" value="{{ f.q }}" placeholder="Search company, title or location">
   <select name="role">
@@ -39,7 +47,7 @@
       <div><span class="pill {{ 'hi' if r.score >= 80 else 'mid' if r.score >= 60 }}">{{ r.score }}</span></div>
       <div>
         <div class="t">{% if r.is_dream %}<span class="star" title="Dream company">★</span> {% endif %}{{ r.title }}</div>
-        <div class="s">{{ r.company }} · {{ r.location or 'location not listed' }}{% if r.season %} · {{ r.season }}{% endif %}</div>
+        <div class="s">{{ r.company }} · {{ r.location or 'location not listed' }}{% if r.season %} · {{ r.season }}{% endif %}{% if r.deadline %} · <span style="color:var(--warn)">due {{ r.deadline }}</span>{% endif %}</div>
       </div>
     </div>
     {% else %}

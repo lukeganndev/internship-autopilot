@@ -167,7 +167,8 @@ def outreach(job: int):
         typer.echo(c["draft"])
     if r.get("error"):
         typer.secho(r["error"], fg="yellow")
-    for label, url in out.search_links(con.execute("SELECT * FROM jobs WHERE id=?", (job,)).fetchone()):
+    school = (prof.load()["education"] or [{}])[0].get("school", "")
+    for label, url in out.search_links(con.execute("SELECT * FROM jobs WHERE id=?", (job,)).fetchone(), school):
         typer.echo(f"{label}: {url}")
 
 

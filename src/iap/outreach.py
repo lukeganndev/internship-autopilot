@@ -64,12 +64,13 @@ def draft(p: dict, job, person: dict, project: dict | None, applied: bool = True
     return "\n".join([*lines, "", "Thanks,", me])
 
 
-def search_links(job) -> list[tuple[str, str]]:
+def search_links(job, school: str = "") -> list[tuple[str, str]]:
     """Links you open yourself. Nothing here is fetched by the program."""
     co = job["company"]
+    alumni = [(f"LinkedIn: {school} alumni there", f"https://www.linkedin.com/search/results/people/?keywords={quote_plus(co + ' ' + school)}")] if school else []
     return [
         ("LinkedIn: university recruiters", f"https://www.linkedin.com/search/results/people/?keywords={quote_plus(co + ' university recruiter')}"),
-        ("LinkedIn: Alabama alumni there", f"https://www.linkedin.com/search/results/people/?keywords={quote_plus(co + ' University of Alabama')}"),
+        *alumni,
         ("Web: campus recruiting page", f"https://www.google.com/search?q={quote_plus(chr(34) + co + chr(34) + ' university recruiting internships team')}"),
     ]
 

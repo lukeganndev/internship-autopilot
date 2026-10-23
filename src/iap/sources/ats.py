@@ -31,6 +31,7 @@ async def _greenhouse(c, b):
         Job("greenhouse", j.get("company_name") or b["company"], j["title"], j["absolute_url"],
             location=_gh_location(j),
             posted_at=iso_date(j.get("first_published") or j.get("updated_at")),
+            deadline=iso_date(j.get("application_deadline")),
             key=Ref("greenhouse", b["account"], str(j["id"])).key)
         for j in d["jobs"] if _INTERNISH.search(j["title"])
     ]

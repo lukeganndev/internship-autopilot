@@ -5,7 +5,7 @@
   <strong>Inboxes:</strong>
   {% if accounts %}{% for a in accounts %}<span class="chip" style="color:var(--good)">{{ a }} connected</span>{% endfor %}
   {% else %}<span class="chip warn">none connected</span> <span class="muted">Run <code>uv run iap mail setup gmail &lt;client.json&gt;</code> (see README → Email).</span>{% endif %}
-  <span class="muted">Last scan: {{ last_sync[:16] if last_sync else 'never' }} UTC · runs with every 2-hour fetch</span>
+  <span class="muted">Last scan: {{ (last_sync[:16] ~ ' UTC') if last_sync else 'not yet' }} · runs with every 2-hour fetch</span>
   {% if accounts %}<button class="primary" hx-post="/email/sync" hx-indicator="#syncing" style="margin-left:auto">Scan now</button>
   <span id="syncing" class="htmx-indicator muted">Scanning…</span>{% endif %}
 </div>

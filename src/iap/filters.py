@@ -84,6 +84,29 @@ def season_started(season: str, today: date) -> bool:
     )
 
 
+_MONTH = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?"
+DEADLINE = re.compile(
+    r"(?:deadline|apply by|applications? (?:close|closes|are due|due|accepted until|accepted through|open until)|"
+    r"closing date|no later than|submit (?:your )?application(?:s)? by|posting (?:closes|ends))[^.\n]{0,40}?"
+    rf"(({_MONTH}) \d{{1,2}}(?:st|nd|rd|th)?,? \d{{4}}|\d{{1,2}}/\d{{1,2}}/\d{{4}}|\d{{4}}-\d{{2}}-\d{{2}})", re.I)
+
+
+def deadline_in(text: str) -> str:
+    """An application deadline stated in the text, as YYYY-MM-DD ('' if none)."""
+    from datetime import datetime
+
+    if not (m := DEADLINE.search(text or "")):
+        return ""
+    raw = re.sub(r"(\d)(st|nd|rd|th)", r"\1", m.group(1)).replace(",", "").replace(".", "")
+    raw = re.sub(r"^sept", "sep", raw, flags=re.I)
+    for fmt in ("%B %d %Y", "%b %d %Y", "%m/%d/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(raw, fmt).date().isoformat()
+        except ValueError:
+            pass
+    return ""
+
+
 def grad_deadline(text: str) -> int | None:
     """Latest graduation year a posting allows, if it states an upper bound."""
     years = []
@@ -106,6 +129,8 @@ def exclusion(job, grad_year: int | None, today: date | None = None) -> str | No
         return "unpaid"
     if season_started(season := job.season or season_of(job.title), today):
         return f"{season} already started"
+    if (deadline := getattr(job, "deadline", "")) and deadline < today.isoformat():
+        return f"deadline passed ({deadline})"
     if not SOPH_OK.search(text):
         if grad_year and (deadline := grad_deadline(text)) and deadline < grad_year:
             return f"requires graduation by {deadline}"

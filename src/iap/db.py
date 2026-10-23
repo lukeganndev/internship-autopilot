@@ -13,6 +13,7 @@ DEFAULT_SETTINGS = {
     "tailor_model": "sonnet",  # model alias for `claude -p`; sonnet keeps subscription usage low
     "tailor_batch": 10,        # max jobs tailored per batch (runs twice a day)
     "mail_last_sync": None,    # ISO timestamp of the last Gmail/Outlook scan
+    "reminded": {},            # job id → date a deadline toast was last shown (one per job per day)
     # "|" separates aliases. Matched as whole words against the company name.
     "watchlist": [
         "Google", "Microsoft", "Amazon|AWS", "Meta", "Apple", "NVIDIA",
@@ -30,7 +31,15 @@ def connect(path: Path | str | None = None) -> sqlite3.Connection:
     con = sqlite3.connect(path, timeout=30)
     con.row_factory = sqlite3.Row
     con.executescript((Path(__file__).parent / "schema.sql").read_text(encoding="utf-8"))
+    for table, column, ddl in MIGRATIONS:  # columns added after a database was first created
+        if column not in {r["name"] for r in con.execute(f"PRAGMA table_info({table})")}:
+            con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
     return con
+
+
+MIGRATIONS = [
+    ("jobs", "deadline", "TEXT NOT NULL DEFAULT ''"),  # YYYY-MM-DD; from the posting or set by you
+]
 
 
 def get_setting(con, key: str):
@@ -93,10 +102,11 @@ def upsert_job(con, job, aliases=(), excluded=None, flags=(), dream=False) -> tu
     if is_new:
         jid = con.execute(
             """INSERT INTO jobs(key, company, company_norm, title, title_norm, location, url, ats, description,
-                                salary, season, posted_at, excluded_reason, flags, is_dream)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                salary, season, posted_at, excluded_reason, flags, is_dream, deadline)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (job.key, job.company, cn, job.title, tn, job.location, job.url, job.key.split(":")[0],
-             job.description, job.salary, job.season, job.posted_at, excluded, json.dumps(list(flags)), int(dream)),
+             job.description, job.salary, job.season, job.posted_at, excluded, json.dumps(list(flags)), int(dream),
+             getattr(job, "deadline", "")),
         ).lastrowid
     else:
         jid = row["job_id"]
@@ -106,9 +116,10 @@ def upsert_job(con, job, aliases=(), excluded=None, flags=(), dream=False) -> tu
                  location=CASE WHEN location='' THEN ? ELSE location END,
                  salary=CASE WHEN salary='' THEN ? ELSE salary END,
                  season=CASE WHEN season='' THEN ? ELSE season END,
-                 posted_at=CASE WHEN posted_at='' THEN ? ELSE posted_at END
+                 posted_at=CASE WHEN posted_at='' THEN ? ELSE posted_at END,
+                 deadline=CASE WHEN deadline='' THEN ? ELSE deadline END
                WHERE id=?""",
-            (job.description, job.location, job.salary, job.season, job.posted_at, jid),
+            (job.description, job.location, job.salary, job.season, job.posted_at, getattr(job, "deadline", ""), jid),
         )
     con.executemany(
         "INSERT OR IGNORE INTO job_sources(key, job_id, source, url) VALUES (?,?,?,?)",

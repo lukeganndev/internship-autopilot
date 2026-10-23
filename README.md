@@ -4,14 +4,37 @@ A local-first internship pipeline for a CS student. It finds postings, scores fi
 one-page resume, and fills in the application form, then **stops at the submit button** so a human
 reviews and clicks it.
 
-> Built for Windows. Python 3.12 + Playwright + SQLite. The AI tailoring step runs through
-> [Claude Code](https://claude.com/claude-code) (`claude -p`), so no API key is needed.
+> Built for Windows. Python 3.12 + Playwright + SQLite + FastAPI/HTMX. The AI tailoring step runs
+> through [Claude Code](https://claude.com/claude-code) (`claude -p`), so no API key is needed.
+
+![Queue: ranked matches with a per-point score breakdown and missing skills](docs/screenshots/queue.png)
+
+| Review a tailored application | Status changes from email |
+|---|---|
+| ![Review screen: ATS keywords, gaps, verifier notes, drafted answers, autofill, outreach](docs/screenshots/review.png) | ![Email page: automatic status changes with evidence and undo](docs/screenshots/email.png) |
+
+Screenshots use fake data (`scripts/demo.py`). Example output: [a tailored resume](docs/sample_tailored_resume.pdf).
+Try it without any setup beyond `uv sync`: `uv run python scripts/demo.py` opens the dashboard on a
+fictional data set.
+
+## What it does
+
+1. **Finds internships every 2 hours:** 3 GitHub lists plus ~2,450 company boards polled directly
+   through 8 public job APIs, deduped on ATS job ids (~34k raw postings → ~13k unique).
+2. **Filters and scores them:** drops non-US, unpaid, grad-only, senior-only, past-deadline and
+   already-started postings, then scores fit 0-100 with a reason for every point.
+3. **Tailors a one-page resume per approved job** with Claude Code, verified against the master
+   profile so nothing is invented, plus an ATS keyword check and drafted answers.
+4. **Fills the application** in a visible browser and stops before Submit.
+5. **Tracks everything** in a local dashboard: approvals, deadlines, statuses updated from your
+   inbox, and outreach drafts for people at the company.
 
 ## Ground rules (enforced in code)
 
-- **Never submits.** Autofill adapters have no submit method. CAPTCHAs, account creation and submit buttons pause for the human.
-- **Never invents.** Tailored bullets must cite the id of a real bullet in the master profile; anything that adds new skills or numbers is rejected and shown as a gap instead.
-- **No LinkedIn/Handshake bots.** Those sites ban automation. Paste a listing URL to import it instead.
+- **Never submits.** Every autofill click goes through one guard that refuses submit/next/continue-type buttons, and Enter is never pressed. CAPTCHAs, logins and account creation pause for you.
+- **Never invents.** Claude proposes; Python verifies every reworded bullet against its source and reverts any that add a number, technology or claim. Missing skills are listed as gaps, never added.
+- **No LinkedIn/Handshake bots.** Those sites ban automation and are never fetched. Paste a listing with `iap add`, and outreach gives you search links to open yourself.
+- **Never sends anything.** Inbox access is read-only and outreach drafts are copy-only.
 - **Personal data never touches the repo.** It lives in `~\.internship-autopilot\data`, and a pre-commit hook blocks personal-data files, secrets, and your actual phone/email/address.
 
 ## Status
@@ -23,7 +46,7 @@ reviews and clicks it.
 | 3 | Fit scoring with reasons | ✅ |
 | 4 | Claude Code tailoring + ATS check | ✅ |
 | 5 | Playwright autofill (stops before submit) | ✅ |
-| 6 | Local dashboard (queue, review, tracker, email log, outreach, settings) | ✅ (deadline reminders still to come) |
+| 6 | Local dashboard (queue, review, tracker, deadlines, email log, outreach, settings) | ✅ |
 | 7 | Gmail/Outlook status sync + outreach drafts | ✅ |
 
 ## Setup (Windows)
@@ -155,6 +178,13 @@ Windows Credential Manager.
 uv run iap mail sync                 # scan now (also a button on the dashboard's Email page)
 uv run iap mail status
 ```
+
+### Deadlines
+
+Deadlines come from Greenhouse's `application_deadline` field or wording like "applications close
+November 15, 2026" in the description, and you can set or correct one on any job in the dashboard.
+Postings past their deadline drop out of the queue. A **Due in the next 7 days** strip sits above
+the queue, and approved jobs due within 3 days get a Windows reminder once a day.
 
 ### Outreach
 

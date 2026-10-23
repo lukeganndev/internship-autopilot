@@ -4,7 +4,7 @@ import json
 import re
 from datetime import date, timedelta
 
-from .. import db, filters, match, notify
+from .. import db, filters, match, notify, reminders
 from .. import profile as prof
 from . import ats, lists
 from .common import Job, Ref, client, html_to_text, is_gone, parse_url
@@ -117,6 +117,7 @@ async def _collect(con, use_boards: bool, watch):
 
 def _verdict(job: Job, gy, watch):
     job.season = job.season or filters.season_of(job.title, job.description)
+    job.deadline = job.deadline or filters.deadline_in(job.description)
     return filters.exclusion(job, gy), filters.flags(job), filters.is_dream(job.company, watch)
 
 
@@ -126,15 +127,15 @@ async def _backfill(con, gy, watch) -> int:
         """SELECT * FROM jobs WHERE description='' AND active=1 AND excluded_reason IS NULL AND ats != 'url'
            ORDER BY is_dream DESC, first_seen DESC LIMIT ?""", (BACKFILL_LIMIT,)).fetchall()
     jobs = [Job("backfill", r["company"], r["title"], r["url"], location=r["location"], season=r["season"],
-                key=r["key"]) for r in rows]
+                key=r["key"], deadline=r["deadline"]) for r in rows]
     ats.reset_cache()
     async with client() as c:
         done = await _enrich(c, jobs)
     for r, j in zip(rows, jobs):
         if j.description:
             reason, flags, _ = _verdict(j, gy, watch)
-            con.execute("UPDATE jobs SET description=?, location=?, season=?, excluded_reason=?, flags=? WHERE id=?",
-                        (j.description, j.location, j.season, reason, json.dumps(flags), r["id"]))
+            con.execute("UPDATE jobs SET description=?, location=?, season=?, deadline=?, excluded_reason=?, flags=? WHERE id=?",
+                        (j.description, j.location, j.season, j.deadline, reason, json.dumps(flags), r["id"]))
     return done
 
 
@@ -148,11 +149,11 @@ def refilter(con, job_ids: list[int] | None = None) -> dict:
     for r in rows:
         manual = con.execute("SELECT 1 FROM job_sources WHERE job_id=? AND source='manual'", (r["id"],)).fetchone()
         j = Job("refilter", r["company"], r["title"], r["url"], location=r["location"],
-                description=r["description"], season=r["season"], key=r["key"])
+                description=r["description"], season=r["season"], key=r["key"], deadline=r["deadline"])
         reason, flags, dream = _verdict(j, gy, watch)
-        new = (None if manual else reason, json.dumps(flags), int(dream))
-        if new != (r["excluded_reason"], r["flags"], r["is_dream"]):
-            con.execute("UPDATE jobs SET excluded_reason=?, flags=?, is_dream=? WHERE id=?", (*new, r["id"]))
+        new = (None if manual else reason, json.dumps(flags), int(dream), j.deadline)
+        if new != (r["excluded_reason"], r["flags"], r["is_dream"], r["deadline"]):
+            con.execute("UPDATE jobs SET excluded_reason=?, flags=?, is_dream=?, deadline=? WHERE id=?", (*new, r["id"]))
             changed += 1
     con.commit()
     return {"changed": changed}
@@ -188,6 +189,10 @@ def run(con=None, use_boards: bool | None = None) -> dict:
         stats["scoring"] = match.score_all(con, prof.load())
     except FileNotFoundError:
         stats["scoring"] = "skipped: no profile yet (run `iap init`)"
+    # Deadlines pass between fetches; take those jobs out, then remind about what's close.
+    con.execute("""UPDATE jobs SET excluded_reason='deadline passed (' || deadline || ')'
+                   WHERE deadline != '' AND deadline < date('now', 'localtime') AND excluded_reason IS NULL""")
+    stats["reminders"] = reminders.remind(con)
     con.execute("UPDATE runs SET finished=datetime('now'), stats=? WHERE id=?", (json.dumps(stats), run_id))
     con.commit()
     return stats
