@@ -12,6 +12,7 @@ DEFAULT_SETTINGS = {
     "threshold": "balanced",  # strict (70) | balanced (60) | broad (45) | any number 0-100
     "tailor_model": "sonnet",  # model alias for `claude -p`; sonnet keeps subscription usage low
     "tailor_batch": 10,        # max jobs tailored per batch (runs twice a day)
+    "mail_last_sync": None,    # ISO timestamp of the last Gmail/Outlook scan
     # "|" separates aliases. Matched as whole words against the company name.
     "watchlist": [
         "Google", "Microsoft", "Amazon|AWS", "Meta", "Apple", "NVIDIA",

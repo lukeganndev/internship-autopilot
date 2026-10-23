@@ -100,6 +100,37 @@ CREATE TABLE IF NOT EXISTS answers (
     UNIQUE (job_id, question)
 );
 
+-- Emails already looked at (so each is classified once) and what they were about.
+CREATE TABLE IF NOT EXISTS emails (
+    account TEXT NOT NULL,                 -- gmail | outlook
+    message_id TEXT NOT NULL,
+    sender TEXT, subject TEXT, snippet TEXT, received_at TEXT,
+    job_id INTEGER REFERENCES jobs(id),
+    classification TEXT,                   -- applied | oa | interview | offer | rejected | NULL
+    PRIMARY KEY (account, message_id)
+);
+
+-- Every automatic status change, with the evidence, so the dashboard can show and undo it.
+CREATE TABLE IF NOT EXISTS status_events (
+    id INTEGER PRIMARY KEY,
+    job_id INTEGER NOT NULL REFERENCES jobs(id),
+    old TEXT, new TEXT NOT NULL,
+    source TEXT NOT NULL,                  -- email | autofill
+    evidence TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    undone INTEGER NOT NULL DEFAULT 0
+);
+
+-- Outreach suggestions from public sources only, with a draft you send yourself.
+CREATE TABLE IF NOT EXISTS contacts (
+    id INTEGER PRIMARY KEY,
+    job_id INTEGER NOT NULL REFERENCES jobs(id),
+    name TEXT, role TEXT,
+    source_url TEXT NOT NULL,
+    draft TEXT,
+    UNIQUE (job_id, source_url)
+);
+
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL                    -- JSON

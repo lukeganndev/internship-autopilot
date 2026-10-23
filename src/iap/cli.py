@@ -106,6 +106,69 @@ def source(no_boards: bool = typer.Option(False, "--no-boards", help="Only read 
 
     stats = run.run(use_boards=False if no_boards else None)
     typer.echo(json.dumps(stats, indent=2))
+    from . import mail
+
+    if mail.accounts():  # piggyback the email scan on the 2-hour fetch
+        typer.echo(json.dumps({"mail": mail.sync()}, indent=2))
+
+
+mail_app = typer.Typer(no_args_is_help=True, help="Read-only Gmail/Outlook scanning that updates application statuses.")
+app.add_typer(mail_app, name="mail")
+
+
+@mail_app.command("setup")
+def mail_setup(provider: str = typer.Argument(..., help="gmail or outlook"),
+               credential: str = typer.Argument(..., help="gmail: path to the OAuth client JSON; outlook: app (client) ID")):
+    """Connect an inbox read-only (opens a browser for you to sign in and consent). See README > Email."""
+    from . import mail
+
+    if provider == "gmail":
+        typer.echo(mail.gmail_setup(credential))
+    elif provider == "outlook":
+        typer.echo(mail.outlook_setup(credential))
+    else:
+        raise typer.BadParameter("provider must be gmail or outlook")
+
+
+@mail_app.command("sync")
+def mail_sync(days: int = typer.Option(None, help="Look back this many days (default: since last sync).")):
+    """Scan connected inboxes now and apply status changes."""
+    from . import mail
+
+    r = mail.sync(days=days)
+    if not r["accounts"]:
+        typer.echo("No inbox connected. Run `iap mail setup gmail <client.json>` first.")
+    for c in r["changes"]:
+        typer.secho(f"{c['company']} — {c['title']}: now {c['status']}  ({c['subject'][:70]})", fg="green")
+    for e in r["errors"]:
+        typer.secho(e, fg="red")
+    if r["accounts"] and not r["changes"]:
+        typer.echo(f"Scanned {', '.join(r['accounts'])} ({r['days']} days): no status changes.")
+
+
+@mail_app.command("status")
+def mail_status():
+    """Which inboxes are connected and when they were last scanned."""
+    from . import mail
+
+    typer.echo(f"Connected: {', '.join(mail.accounts()) or 'none'}. Last sync: {db.get_setting(db.connect(), 'mail_last_sync') or 'never'}")
+
+
+@app.command()
+def outreach(job: int):
+    """Suggest people to contact (public GitHub only) with drafts you send yourself."""
+    from . import outreach as out
+
+    con = db.connect()
+    t = con.execute("SELECT spec FROM tailored WHERE job_id=?", (job,)).fetchone()
+    r = out.suggest(con, job, prof.load(), json.loads(t["spec"]) if t else None)
+    for c in con.execute("SELECT * FROM contacts WHERE job_id=?", (job,)):
+        typer.secho(f"\n{c['name']} — {c['role'] or 'no bio'}  {c['source_url']}", bold=True)
+        typer.echo(c["draft"])
+    if r.get("error"):
+        typer.secho(r["error"], fg="yellow")
+    for label, url in out.search_links(con.execute("SELECT * FROM jobs WHERE id=?", (job,)).fetchone()):
+        typer.echo(f"{label}: {url}")
 
 
 @app.command()

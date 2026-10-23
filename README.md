@@ -23,8 +23,8 @@ reviews and clicks it.
 | 3 | Fit scoring with reasons | ✅ |
 | 4 | Claude Code tailoring + ATS check | ✅ |
 | 5 | Playwright autofill (stops before submit) | ✅ |
-| 6 | Local dashboard | 🟡 queue, job details, tracker, settings done; review screen + deadlines come with Phases 4-5 |
-| 7 | Gmail/Outlook status sync + outreach drafts | ⏳ |
+| 6 | Local dashboard (queue, review, tracker, email log, outreach, settings) | ✅ (deadline reminders still to come) |
+| 7 | Gmail/Outlook status sync + outreach drafts | ✅ |
 
 ## Setup (Windows)
 
@@ -126,6 +126,43 @@ Safety, enforced in `autofill/runner.py`:
 - **Never overwrites** a field that already has a value, never ticks consent boxes, never guesses:
   uncertain fields are left blank and highlighted.
 - When the page says your application was received, the job is marked **applied** in the tracker.
+
+### Email status tracking (Phase 7)
+
+Read-only access to your inboxes moves tracked applications along: OA invites, interviews, offers
+and rejections. Only jobs you're tracking are touched, statuses only move forward (a rejection
+always applies), and every change is listed on the dashboard's **Email** page with the email that
+caused it and an **Undo** button. Scanning runs after every 2-hour fetch. Tokens are stored in
+Windows Credential Manager.
+
+**Gmail** (one-time, ~5 minutes):
+1. In [Google Cloud Console](https://console.cloud.google.com/), create a project and enable the **Gmail API**.
+2. **OAuth consent screen** → External → add yourself as a test user.
+3. **Credentials** → Create credentials → OAuth client ID → **Desktop app** → download the JSON.
+4. `uv run iap mail setup gmail path\to\client_secret.json` and approve the read-only scope in the browser.
+   Then delete the downloaded file (the credentials are now in Credential Manager).
+
+**Outlook / school Microsoft 365** (may be blocked by your school):
+1. In [Microsoft Entra](https://entra.microsoft.com/) → App registrations → New registration →
+   "Accounts in any organizational directory and personal Microsoft accounts" → Redirect URI
+   *Public client* `http://localhost`. Copy the Application (client) ID.
+2. `uv run iap mail setup outlook <client-id>` and sign in.
+3. If your school blocks third-party apps (an "admin approval required" error), forward your school
+   mail to Gmail instead (Outlook on the web → Settings → Mail → Forwarding). Gmail scanning then
+   covers both inboxes.
+
+```powershell
+uv run iap mail sync                 # scan now (also a button on the dashboard's Email page)
+uv run iap mail status
+```
+
+### Outreach
+
+On any tracked job, **Find people** looks up the company's public GitHub organization and its
+public members, and drafts a short note from your real profile ("I recently applied..." only once
+the job is marked applied). It also gives you LinkedIn and web search links **to open yourself**.
+LinkedIn is never fetched, and nothing is ever sent for you. `uv run iap outreach <id>` does the
+same in the terminal. Set `GITHUB_TOKEN` in `.env` if you hit GitHub's 60-requests-per-hour limit.
 
 ### How jobs are scored
 

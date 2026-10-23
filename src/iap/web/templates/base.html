@@ -54,6 +54,7 @@
   <nav>
     <a href="/" class="{{ 'on' if active == 'queue' }}">Queue ({{ nav.queued }})</a>
     <a href="/applications" class="{{ 'on' if active == 'apps' }}">Tracker ({{ nav.tracked }})</a>
+    <a href="/email" class="{{ 'on' if active == 'email' }}">Email</a>
     <a href="/settings" class="{{ 'on' if active == 'settings' }}">Settings</a>
   </nav>
   <span class="meta">Threshold {{ nav.threshold }} · last fetch {{ nav.last_run or 'never' }} UTC</span>

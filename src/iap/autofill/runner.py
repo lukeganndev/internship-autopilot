@@ -215,9 +215,8 @@ def step(page, con, job, ctx: Context, state: dict, portal: str) -> None:
     if any(a for _, a in _each_frame(page, "() => window.__iap.applied()")):
         if not state["applied"]:
             state["applied"] = True
-            con.execute("""INSERT INTO applications(job_id, status, applied_at) VALUES (?, 'applied', datetime('now'))
-                           ON CONFLICT(job_id) DO UPDATE SET status='applied', applied_at=COALESCE(applied_at, datetime('now')),
-                           updated_at=datetime('now')""", (job["id"],))
+            from ..mail import advance  # same logged, undoable path as email-driven changes
+            advance(con, job["id"], "applied", f"confirmation page {page.url}", source="autofill")
             con.commit()
             notify.toast("Marked as applied", f"{job['company']}: {job['title']}")
         page.evaluate("m => window.__iap.banner(m, 'ok')", "Looks submitted. Marked as applied in your tracker. You can close this window.")

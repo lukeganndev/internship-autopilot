@@ -101,6 +101,31 @@ def test_review_screen_and_verified_bullet_edits(client, tmp_path, monkeypatch):
     assert tuple(a) == ("Edited answer.", 1)
 
 
+def test_email_page_lists_changes_and_undo(client, monkeypatch):
+    from iap import mail
+
+    monkeypatch.setattr(mail.notify, "toast", lambda *a, **k: None)
+    monkeypatch.setattr(mail, "accounts", lambda: [])
+    con = db.connect()
+    jid = client.ids["swe"]
+    con.execute("INSERT INTO applications(job_id, status) VALUES (?, 'applied')", (jid,))
+    mail.advance(con, jid, "interview", "2026-10-24 · Acme <jobs@acme.com> · Interview invitation")
+    con.commit()
+    html = client.get("/email").text
+    assert "Interview invitation" in html and "interview" in html and "none connected" in html
+    assert client.post("/events/1/undo").status_code == 403
+    client.post("/events/1/undo", headers=HX)
+    assert db.connect().execute("SELECT status FROM applications WHERE job_id=?", (jid,)).fetchone()[0] == "applied"
+
+
+def test_tracked_job_shows_outreach_links(client):
+    con = db.connect()
+    con.execute("INSERT INTO applications(job_id, status) VALUES (?, 'applied')", (client.ids["swe"],))
+    con.commit()
+    html = client.get(f"/job/{client.ids['swe']}", headers=HX).text
+    assert "Outreach" in html and "linkedin.com/search/results/people" in html and "Find people" in html
+
+
 def test_settings_save_threshold_and_watchlist(client):
     assert client.post("/settings", data={"threshold": "strict", "watchlist": "Acme"}).status_code == 403
     r = client.post("/settings", data={"threshold": "30", "watchlist": "Acme\n"}, headers=HX, follow_redirects=False)

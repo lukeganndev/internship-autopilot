@@ -31,6 +31,7 @@
   {% if error %}<p class="chip bad">Tailoring failed: {{ error }}</p>{% elif j.app_notes %}<p class="chip warn">{{ j.app_notes }}</p>{% endif %}
   {% if j.status == 'approved' and not t %}<p class="muted" style="margin:0">Approved. It gets tailored in the next batch (9 AM / 6 PM), or click Tailor now.</p>{% endif %}
   {% if t %}{% include "_review.html" %}{% endif %}
+  {% if j.status and j.status != 'skipped' %}{% include "_outreach.html" %}{% endif %}
 
   {% if j.excluded_reason %}<p class="chip warn">Filtered out: {{ j.excluded_reason }}</p>{% endif %}
   {% set flags = j.flags|fromjson %}

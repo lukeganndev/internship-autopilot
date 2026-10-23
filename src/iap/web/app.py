@@ -77,10 +77,64 @@ def _job(con, job_id: int):
 
 def _panel(request: Request, con, job_id: int, tpl: str = "_job.html", **extra):
     r, sources = _job(con, job_id)
+    from .. import outreach
+
     t = con.execute("SELECT * FROM tailored WHERE job_id=?", (job_id,)).fetchone()
     answers = con.execute("SELECT * FROM answers WHERE job_id=? ORDER BY id", (job_id,)).fetchall()
+    contacts = con.execute("SELECT * FROM contacts WHERE job_id=? ORDER BY id", (job_id,)).fetchall()
     return T.TemplateResponse(request, tpl, {"j": r, "sources": sources, "statuses": STATUSES, "nav": _nav(con),
-                                             "t": t, "spec": json.loads(t["spec"]) if t else None, "answers": answers, **extra})
+                                             "t": t, "spec": json.loads(t["spec"]) if t else None, "answers": answers,
+                                             "contacts": contacts, "search_links": outreach.search_links(r), **extra})
+
+
+@app.post("/job/{job_id}/outreach", response_class=HTMLResponse)
+def find_people(request: Request, job_id: int):
+    _require_htmx(request)
+    from .. import outreach, profile as prof
+
+    con = db.connect()
+    _job(con, job_id)
+    t = con.execute("SELECT spec FROM tailored WHERE job_id=?", (job_id,)).fetchone()
+    result = outreach.suggest(con, job_id, prof.load(), json.loads(t["spec"]) if t else None)
+    return _panel(request, con, job_id, outreach_note=result.get("error"))
+
+
+@app.get("/email", response_class=HTMLResponse)
+def email_page(request: Request):
+    from .. import mail
+
+    con = db.connect()
+    events = con.execute(
+        """SELECT e.*, j.company, j.title FROM status_events e JOIN jobs j ON j.id=e.job_id
+           ORDER BY e.id DESC LIMIT 200""").fetchall()
+    unmatched = con.execute(
+        """SELECT * FROM emails WHERE classification IS NOT NULL AND job_id IS NULL
+           ORDER BY received_at DESC LIMIT 30""").fetchall()
+    return T.TemplateResponse(request, "email.html", {
+        "nav": _nav(con), "events": events, "unmatched": unmatched, "accounts": mail.accounts(),
+        "last_sync": db.get_setting(con, "mail_last_sync")})
+
+
+@app.post("/email/sync")
+def email_sync(request: Request):
+    _require_htmx(request)
+    from .. import mail
+
+    mail.sync()
+    resp = RedirectResponse("/email", status_code=303)
+    resp.headers["HX-Redirect"] = "/email"
+    return resp
+
+
+@app.post("/events/{event_id}/undo")
+def undo_event(request: Request, event_id: int):
+    _require_htmx(request)
+    from .. import mail
+
+    mail.undo(db.connect(), event_id)
+    resp = RedirectResponse("/email", status_code=303)
+    resp.headers["HX-Redirect"] = "/email"
+    return resp
 
 
 @app.get("/job/{job_id}", response_class=HTMLResponse)

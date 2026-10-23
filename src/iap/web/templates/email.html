@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% set active = "email" %}
+{% block main %}
+<div class="panel" style="padding:14px; margin-bottom:14px; display:flex; flex-wrap:wrap; gap:10px; align-items:center">
+  <strong>Inboxes:</strong>
+  {% if accounts %}{% for a in accounts %}<span class="chip" style="color:var(--good)">{{ a }} connected</span>{% endfor %}
+  {% else %}<span class="chip warn">none connected</span> <span class="muted">Run <code>uv run iap mail setup gmail &lt;client.json&gt;</code> (see README → Email).</span>{% endif %}
+  <span class="muted">Last scan: {{ last_sync[:16] if last_sync else 'never' }} UTC · runs with every 2-hour fetch</span>
+  {% if accounts %}<button class="primary" hx-post="/email/sync" hx-indicator="#syncing" style="margin-left:auto">Scan now</button>
+  <span id="syncing" class="htmx-indicator muted">Scanning…</span>{% endif %}
+</div>
+
+<h3 style="margin:0 0 8px">Status changes made automatically</h3>
+<div class="panel" style="overflow-x:auto; margin-bottom:18px">
+<table>
+  <tr><th>When</th><th>Job</th><th>Change</th><th>Because of</th><th></th></tr>
+  {% for e in events %}
+  <tr style="{{ 'opacity:.5' if e.undone }}">
+    <td class="muted" style="white-space:nowrap; font-size:13px">{{ e.created_at[:16] }}</td>
+    <td><a href="/job/{{ e.job_id }}"><strong>{{ e.company }}</strong></a><div class="muted" style="font-size:13px">{{ e.title }}</div></td>
+    <td><span class="chip">{{ e.old or '–' }}</span> → <span class="chip {{ 'bad' if e.new == 'rejected' }}" style="{{ 'color:var(--good)' if e.new in ('interview', 'offer', 'oa') }}">{{ e.new }}</span>
+      <div class="muted" style="font-size:12px">via {{ e.source }}</div></td>
+    <td style="font-size:13px">{{ e.evidence }}</td>
+    <td>{% if e.undone %}<span class="muted">undone</span>{% else %}
+      <button hx-post="/events/{{ e.id }}/undo" hx-confirm="Undo this change?">Undo</button>{% endif %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5" class="muted">No automatic changes yet. They show up here when an email from a company you applied to is an OA invite, interview, offer or rejection.</td></tr>
+  {% endfor %}
+</table>
+</div>
+
+{% if unmatched %}
+<h3 style="margin:0 0 8px">Recruiting emails it couldn't match to an application</h3>
+<p class="muted" style="margin-top:0">Usually a company you applied to outside the tracker, or one that emails under a different name. Update those by hand.</p>
+<div class="panel" style="overflow-x:auto">
+<table>
+  <tr><th>Received</th><th>From</th><th>Subject</th><th>Looks like</th></tr>
+  {% for m in unmatched %}
+  <tr><td class="muted" style="font-size:13px">{{ (m.received_at or '')[:10] }}</td><td style="font-size:13px">{{ m.sender }}</td>
+      <td>{{ m.subject }}</td><td><span class="chip">{{ m.classification }}</span></td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endif %}
+{% endblock %}

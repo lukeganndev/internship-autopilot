@@ -1,0 +1,20 @@
+{# People to contact about this application. Public sources only; nothing is ever sent for you. #}
+<section style="margin:18px 0; padding:14px; border:1px solid var(--line); border-radius:10px">
+  <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center">
+    <h3 style="margin:0; font-size:16px">Outreach</h3>
+    <button hx-post="/job/{{ j.id }}/outreach" hx-target="#job-{{ j.id }}" hx-swap="outerHTML" hx-indicator="#people-{{ j.id }}">
+      {{ 'Refresh people' if contacts else 'Find people (public GitHub)' }}</button>
+    <span id="people-{{ j.id }}" class="htmx-indicator muted">Looking up public GitHub members…</span>
+  </div>
+  <p class="muted" style="margin:6px 0 10px">Drafts are for you to copy and send yourself. LinkedIn is never fetched; the links below just open a search for you.</p>
+  {% if outreach_note %}<p class="chip warn">{{ outreach_note }}</p>{% endif %}
+  {% for c in contacts %}
+  <div style="margin:10px 0; padding-top:10px; border-top:1px solid var(--line)">
+    <div><a href="{{ c.source_url }}" target="_blank" rel="noopener noreferrer"><strong>{{ c.name }}</strong></a>
+      {% if c.role %}<span class="muted"> · {{ c.role }}</span>{% endif %}</div>
+    <textarea readonly rows="7" style="width:100%; margin-top:4px">{{ c.draft }}</textarea>
+    <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value); this.textContent='Copied'">Copy draft</button>
+  </div>
+  {% endfor %}
+  <p style="margin:10px 0 0">{% for label, url in search_links %}<a class="btn" href="{{ url }}" target="_blank" rel="noopener noreferrer" style="margin:0 6px 6px 0; display:inline-block">{{ label }} ↗</a>{% endfor %}</p>
+</section>
