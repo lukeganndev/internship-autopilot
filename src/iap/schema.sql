@@ -51,6 +51,24 @@ CREATE TABLE IF NOT EXISTS runs (
     stats TEXT
 );
 
+CREATE TABLE IF NOT EXISTS scores (
+    job_id INTEGER PRIMARY KEY REFERENCES jobs(id),
+    score INTEGER NOT NULL,                -- 0-100
+    reasons TEXT NOT NULL,                 -- JSON list, one line per scoring component
+    missing TEXT NOT NULL DEFAULT '[]',    -- JSON list of skills the job asks for that the profile lacks
+    scored_at TEXT NOT NULL
+);
+
+-- A row exists once you act on a job (skip/approve/apply...). No row = still in the queue.
+CREATE TABLE IF NOT EXISTS applications (
+    job_id INTEGER PRIMARY KEY REFERENCES jobs(id),
+    status TEXT NOT NULL,                  -- skipped | approved | tailored | applied | oa | interview | offer | rejected
+    deadline TEXT,
+    applied_at TEXT,
+    notes TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL                    -- JSON

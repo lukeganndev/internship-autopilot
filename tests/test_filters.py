@@ -33,6 +33,8 @@ def test_grad_level_titles_excluded():
     assert reason(title="PhD Research Intern") == "graduate-level role"
     assert reason(title="MBA Summer Intern") == "graduate-level role"
     assert reason(title="Undergraduate Research Intern") is None
+    assert reason(title="2027 Rendezvous and Proximity Operations Grad Intern") == "graduate-level role"
+    assert reason(title="Graduate Intern - Commercial Title Underwriting") == "graduate-level role"
 
 
 @pytest.mark.parametrize("loc, us", [

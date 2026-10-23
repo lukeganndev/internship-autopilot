@@ -4,7 +4,7 @@ import json
 import re
 from datetime import date, timedelta
 
-from .. import db, filters, notify
+from .. import db, filters, match, notify
 from .. import profile as prof
 from . import ats, lists
 from .common import Job, Ref, client, html_to_text, is_gone, parse_url
@@ -178,6 +178,10 @@ def run(con=None, use_boards: bool | None = None) -> dict:
     stats = {"list_jobs": n_list, "board_jobs": n_board, "new": inserted, "new_eligible": eligible,
              "enriched": enriched, "backfilled": backfilled, "dream": len(dream_hits),
              "errors": len(errors), "error_sample": errors[:15]}
+    try:
+        stats["scoring"] = match.score_all(con, prof.load())
+    except FileNotFoundError:
+        stats["scoring"] = "skipped: no profile yet (run `iap init`)"
     con.execute("UPDATE runs SET finished=datetime('now'), stats=? WHERE id=?", (json.dumps(stats), run_id))
     con.commit()
     return stats

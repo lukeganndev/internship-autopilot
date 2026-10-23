@@ -9,6 +9,7 @@ from . import config
 DEFAULT_SETTINGS = {
     "direct_boards": True,  # poll every company board discovered from the GitHub lists
     "grad_year": None,      # None = read from profile education
+    "threshold": "balanced",  # strict (70) | balanced (60) | broad (45) | any number 0-100
     # "|" separates aliases. Matched as whole words against the company name.
     "watchlist": [
         "Google", "Microsoft", "Amazon|AWS", "Meta", "Apple", "NVIDIA",

@@ -108,6 +108,69 @@ def source(no_boards: bool = typer.Option(False, "--no-boards", help="Only read 
     typer.echo(json.dumps(stats, indent=2))
 
 
+@app.command("score")
+def score_jobs():
+    """Score every eligible job against your profile (also runs after each `iap source`)."""
+    from . import match
+
+    typer.echo(match.score_all(db.connect(), prof.load()))
+
+
+@app.command("queue")
+def show_queue(limit: int = typer.Option(30, "-n")):
+    """Jobs above your threshold (plus all dream companies), best first."""
+    from . import match
+
+    con = db.connect()
+    rows = match.queue(con, limit)
+    for r in rows:
+        star = "*" if r["is_dream"] else " "
+        typer.echo(f"{star}{r['score']:>3}  {r['id']:>6}  {r['company'][:22]:<22}  {r['title'][:54]:<54}  {r['location'][:22]}")
+    typer.echo(f"\nThreshold {match.threshold(con)}. * = dream company. Details: iap why <id>")
+
+
+@app.command()
+def why(job_id: int):
+    """Show a job's score breakdown and missing skills."""
+    r = db.connect().execute(
+        "SELECT j.*, s.score, s.reasons, s.missing FROM jobs j LEFT JOIN scores s ON s.job_id=j.id WHERE j.id=?", (job_id,)
+    ).fetchone()
+    if not r:
+        raise typer.BadParameter(f"no job {job_id}")
+    typer.secho(f"{r['company']} — {r['title']}", bold=True)
+    typer.echo(f"{r['location']}  |  {r['season'] or 'season not stated'}  |  {r['url']}")
+    if r["excluded_reason"]:
+        typer.secho(f"Filtered out: {r['excluded_reason']}", fg="yellow")
+    if r["score"] is None:
+        typer.echo("Not scored yet (run `iap score`).")
+        return
+    typer.secho(f"\nScore {r['score']}/100", bold=True)
+    for line in json.loads(r["reasons"]):
+        typer.echo(f"  {line}")
+    if missing := json.loads(r["missing"]):
+        typer.secho(f"  Not in your profile: {', '.join(missing)}", fg="yellow")
+
+
+@app.command()
+def settings(key: str = typer.Argument(None), value: str = typer.Argument(None)):
+    """Show settings, or set one: `iap settings threshold strict` (strict | balanced | broad | 0-100)."""
+    con = db.connect()
+    if key is None:
+        for k in db.DEFAULT_SETTINGS:
+            typer.echo(f"{k}: {json.dumps(db.get_setting(con, k))}")
+        return
+    if key not in db.DEFAULT_SETTINGS:
+        raise typer.BadParameter(f"unknown setting {key}; one of {', '.join(db.DEFAULT_SETTINGS)}")
+    try:
+        parsed = json.loads(value)
+    except (TypeError, json.JSONDecodeError):
+        parsed = value
+    if key == "threshold" and not (parsed in ("strict", "balanced", "broad") or (isinstance(parsed, int) and 0 <= parsed <= 100)):
+        raise typer.BadParameter("threshold must be strict, balanced, broad, or a number 0-100")
+    db.set_setting(con, key, parsed)
+    typer.echo(f"{key} = {json.dumps(parsed)}")
+
+
 @app.command()
 def refilter():
     """Re-apply filters and the dream-company watchlist to all stored jobs."""

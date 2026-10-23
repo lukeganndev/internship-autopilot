@@ -20,7 +20,7 @@ reviews and clicks it.
 |---|---|---|
 | 1 | Master profile interview + Jake's Resume PDF | ✅ |
 | 2 | Job sourcing (GitHub lists, Greenhouse, Lever, Ashby, Workday, SmartRecruiters, Oracle, Amazon, Microsoft) | ✅ |
-| 3 | Fit scoring with reasons | ⏳ |
+| 3 | Fit scoring with reasons | ✅ |
 | 4 | Claude Code tailoring + ATS check | ⏳ |
 | 5 | Playwright autofill (stops before submit) | ⏳ |
 | 6 | Local dashboard | ⏳ |
@@ -60,7 +60,22 @@ uv run iap source                    # one pass over every source (first run tak
 uv run iap jobs                      # newest eligible jobs (--all shows filtered ones + why, --dream, -s text)
 uv run iap add <url>                 # import a listing you found yourself
 .\scripts\install_tasks.ps1          # run `iap source` every 2h + at logon (Task Scheduler)
+
+# Matching (runs automatically after every `iap source`)
+uv run iap queue                     # best matches above your threshold, dream companies first
+uv run iap why <id>                  # score breakdown + skills the job wants that you don't have
+uv run iap settings threshold strict # strict (70) | balanced (60, default) | broad (45) | any 0-100
 ```
+
+### How jobs are scored
+
+Every eligible job gets 0-100 from four transparent parts, each shown with its reason:
+role fit (0-40: SWE, security, AI/ML/data and embedded/hardware score highest), skills (0-30: tech
+terms in the description vs. your skills, project tech and coursework; missing ones are listed),
+class year (0-20: sophomore-friendly wording up, grad-student-leaning roles down) and season (0-10:
+this summer's cycle best, co-ops low), minus 10 when an active clearance is required. It's rule-based
+on purpose: free to run on every job every 2 hours, and every point is explainable. Dream companies
+always make the queue.
 
 ### Where jobs come from
 

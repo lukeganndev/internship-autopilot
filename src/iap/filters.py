@@ -7,7 +7,7 @@ import re
 from datetime import date
 
 INTERNSHIP = re.compile(r"\bintern(s|ship|ships)?\b|\bco-?op\b|summer (analyst|associate|engineer|program)|\bstep\b|explore program", re.I)
-GRAD_LEVEL = re.compile(r"\b(ph\.?\s?d|mba|master'?s|graduate student|postdoc\w*|doctoral)\b", re.I)
+GRAD_LEVEL = re.compile(r"\b(ph\.?\s?d|mba|master'?s|graduate student|postdoc\w*|doctoral|grad(uate)? intern(ship)?)\b", re.I)
 
 _STATE_NAMES = ("Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|"
                 "Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|"
