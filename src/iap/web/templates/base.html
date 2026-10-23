@@ -42,6 +42,9 @@
   table { width: 100%; border-collapse: collapse; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .htmx-indicator { display: none; }
+  .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline; }
+  button[disabled] { opacity: .5; cursor: not-allowed; }
 </style>
 {% block head %}{% endblock %}
 </head>

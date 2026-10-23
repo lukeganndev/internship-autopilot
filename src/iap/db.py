@@ -10,6 +10,8 @@ DEFAULT_SETTINGS = {
     "direct_boards": True,  # poll every company board discovered from the GitHub lists
     "grad_year": None,      # None = read from profile education
     "threshold": "balanced",  # strict (70) | balanced (60) | broad (45) | any number 0-100
+    "tailor_model": "sonnet",  # model alias for `claude -p`; sonnet keeps subscription usage low
+    "tailor_batch": 10,        # max jobs tailored per batch (runs twice a day)
     # "|" separates aliases. Matched as whole words against the company name.
     "watchlist": [
         "Google", "Microsoft", "Amazon|AWS", "Meta", "Apple", "NVIDIA",
@@ -57,6 +59,18 @@ def touch(con, keys, active: bool = True) -> None:
         "UPDATE jobs SET last_seen=datetime('now'), active=? WHERE id=(SELECT job_id FROM job_sources WHERE key=? LIMIT 1)",
         [(int(active), k) for k in keys],
     )
+
+
+def update_locations(con, pairs: list[tuple[str, str]]) -> list[int]:
+    """Set the location of already-stored jobs from board data; returns ids whose location changed."""
+    changed = []
+    for key, loc in pairs:
+        row = con.execute("SELECT j.id, j.location FROM jobs j JOIN job_sources s ON s.job_id=j.id WHERE s.key=? LIMIT 1",
+                          (key,)).fetchone()
+        if row and row["location"] != loc:
+            con.execute("UPDATE jobs SET location=? WHERE id=?", (loc, row["id"]))
+            changed.append(row["id"])
+    return changed
 
 
 def upsert_job(con, job, aliases=(), excluded=None, flags=(), dream=False) -> tuple[int, bool]:

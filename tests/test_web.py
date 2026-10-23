@@ -58,6 +58,49 @@ def test_status_changes_require_htmx_header(client):
     assert client.post(f"/job/{jid}/status", data={"status": "bogus"}, headers=HX).status_code == 400
 
 
+def _has_tectonic():
+    from iap import resume
+    try:
+        resume.find_tectonic()
+        return True
+    except FileNotFoundError:
+        return False
+
+
+@pytest.mark.skipif(not _has_tectonic(), reason="tectonic not installed")
+def test_review_screen_and_verified_bullet_edits(client, tmp_path, monkeypatch):
+    from iap import tailor
+
+    sample = config.EXAMPLES / "sample_profile.yaml"
+    monkeypatch.setattr(config, "PROFILE", sample)
+    monkeypatch.setattr(config, "OUT", tmp_path / "out")
+    p = prof.load(sample)
+    con = db.connect()
+    jid = client.ids["swe"]
+    job = con.execute("SELECT * FROM jobs WHERE id=?", (jid,)).fetchone()
+    spec, _ = tailor.build_spec(p, {"projects": ["packetscope"], "bullets": []})
+    tailor.render_and_store(con, job, p, spec, [], ["Splunk"])
+    con.execute("INSERT INTO applications(job_id, status) VALUES (?, 'tailored')", (jid,))
+    con.execute("INSERT INTO answers(job_id, question, draft) VALUES (?, 'Why Acme?', 'Because PacketScope.')", (jid,))
+    con.commit()
+
+    html = client.get(f"/job/{jid}", headers=HX).text
+    assert "ATS" in html and "Splunk" in html and "Why Acme?" in html and "Because PacketScope." in html
+    assert client.get(f"/job/{jid}/resume.pdf").headers["content-type"] == "application/pdf"
+
+    ok = "Analyzed home-network traffic to flag port scans and unusual DNS lookups using Scapy"
+    bad = "Built a Kubernetes traffic analyzer that flags port scans and unusual DNS lookups using Scapy"
+    html = client.post(f"/job/{jid}/bullets", data={"b:packetscope.1": bad, "b:packetscope.2": ok.replace("Analyzed", "Stored")},
+                       headers=HX).text
+    assert "edit not applied (it added Kubernetes)" in html
+    html = client.post(f"/job/{jid}/bullets", data={"b:packetscope.1": ok}, headers=HX).text
+    assert "packetscope.1: your edit applied" in html and ok in html
+
+    client.post(f"/job/{jid}/answer/1", data={"text": "Edited answer.", "approve": "true"}, headers=HX)
+    a = db.connect().execute("SELECT final, approved FROM answers WHERE id=1").fetchone()
+    assert tuple(a) == ("Edited answer.", 1)
+
+
 def test_settings_save_threshold_and_watchlist(client):
     assert client.post("/settings", data={"threshold": "strict", "watchlist": "Acme"}).status_code == 403
     r = client.post("/settings", data={"threshold": "30", "watchlist": "Acme\n"}, headers=HX, follow_redirects=False)

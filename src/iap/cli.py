@@ -123,6 +123,23 @@ def dashboard(port: int = typer.Option(8765), open_browser: bool = typer.Option(
     uvicorn.run("iap.web.app:app", host="127.0.0.1", port=port, log_level="warning")
 
 
+@app.command("tailor")
+def tailor_cmd(
+    job: int = typer.Option(None, "--job", help="Tailor one job now (any status)."),
+    limit: int = typer.Option(None, "-n", help="Max jobs this batch (default: setting tailor_batch)."),
+):
+    """Tailor resumes + drafts for approved jobs with Claude Code (runs twice a day on a schedule)."""
+    from . import tailor
+
+    result = tailor.run(limit=limit, job_id=job)
+    for t in result["tailored"]:
+        typer.secho(f"job {t['job']}: ATS {t['ats']}%, {t['pages']} page(s), {t['questions']} question(s) -> {t['pdf']}", fg="green")
+    for f in result["failed"]:
+        typer.secho(f"job {f['job']}: {f['error']}", fg="red")
+    if not result["tailored"] and not result["failed"]:
+        typer.echo("Nothing to tailor. Approve jobs in the dashboard first.")
+
+
 @app.command("score")
 def score_jobs():
     """Score every eligible job against your profile (also runs after each `iap source`)."""

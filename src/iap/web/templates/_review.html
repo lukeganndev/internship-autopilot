@@ -1,0 +1,79 @@
+{# Tailored resume + drafts for one job. Included by _job.html when the job has been tailored. #}
+<section style="margin:18px 0; padding:14px; border:1px solid var(--line); border-radius:10px">
+  <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center">
+    <h3 style="margin:0; font-size:16px">Tailored resume</h3>
+    {% if t.ats_score is not none %}<span class="pill {{ 'hi' if t.ats_score >= 70 else 'mid' if t.ats_score >= 45 }}" title="Share of the posting's tech keywords found in the PDF text">ATS {{ t.ats_score }}%</span>{% endif %}
+    <span class="muted">{{ t.pages }} page{{ 's' if t.pages != 1 }} · updated {{ t.updated_at[:16] }}</span>
+    <a class="btn" href="/job/{{ j.id }}/resume.pdf" target="_blank" rel="noopener">Open PDF ↗</a>
+    <button hx-post="/job/{{ j.id }}/tailor" hx-target="#job-{{ j.id }}" hx-swap="outerHTML"
+            hx-confirm="Re-tailor with Claude? This replaces the current version (uses one request)."
+            hx-indicator="#tailoring-{{ j.id }}">Re-tailor</button>
+    <span id="tailoring-{{ j.id }}" class="htmx-indicator muted">Tailoring with Claude… (30-60 s)</span>
+  </div>
+
+  {% set matched = t.ats_matched|fromjson %}{% set missing = t.ats_missing|fromjson %}
+  {% if matched or missing %}
+  <p style="margin:10px 0 4px">
+    {% for k in matched %}<span class="chip" style="color:var(--good)">✓ {{ k }}</span>{% endfor %}
+    {% for k in missing %}<span class="chip warn">✗ {{ k }}</span>{% endfor %}
+  </p>
+  {% endif %}
+
+  {% set gaps = t.gaps|fromjson %}
+  {% if gaps %}
+  <p style="margin:10px 0 2px"><strong>Gaps</strong> <span class="muted">(the posting asks for these; your profile doesn't show them, so they weren't added)</span></p>
+  <ul style="margin:2px 0 0 18px">{% for g in gaps %}<li>{{ g }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% set notes = t.notes|fromjson %}
+  {% if notes %}
+  <details style="margin-top:10px"><summary>Verifier notes ({{ notes|length }})</summary>
+    <ul style="margin:6px 0 0 18px">{% for n in notes %}<li>{{ n }}</li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+
+  <details style="margin-top:10px"><summary>Edit bullets</summary>
+    <form hx-post="/job/{{ j.id }}/bullets" hx-target="#job-{{ j.id }}" hx-swap="outerHTML" style="margin-top:8px">
+      <p class="muted" style="margin:0 0 8px">Edits are checked against your profile like Claude's are: rewording is fine, new facts are not.</p>
+      {% for sec in ("experience", "projects", "activities") %}{% for item in spec[sec] %}
+        <div style="margin:8px 0 4px"><strong>{{ item.name or item.role }}</strong>{% if item.org %} · {{ item.org }}{% endif %}</div>
+        {% for b in item.bullets %}
+        <textarea name="b:{{ b.id }}" rows="2" style="width:100%; margin-bottom:4px">{{ b.text }}</textarea>
+        {% endfor %}
+      {% endfor %}{% endfor %}
+      <button class="primary" type="submit">Save and re-render</button>
+    </form>
+  </details>
+
+  <iframe src="/job/{{ j.id }}/resume.pdf#view=FitH" title="Tailored resume" style="width:100%; height:640px; margin-top:12px; border:1px solid var(--line); border-radius:8px; background:#fff"></iframe>
+</section>
+
+{% if t.cover_letter_required %}
+<section style="margin:18px 0; padding:14px; border:1px solid var(--line); border-radius:10px">
+  <h3 style="margin:0 0 6px; font-size:16px">Cover letter <span class="chip">required by this application</span>
+    {% if t.cover_letter_approved %}<span class="chip" style="color:var(--good)">approved</span>{% endif %}</h3>
+  {% for w in t.cover_letter_warnings|fromjson %}<p class="chip warn">{{ w }}</p>{% endfor %}
+  <form hx-post="/job/{{ j.id }}/cover" hx-target="#job-{{ j.id }}" hx-swap="outerHTML">
+    <textarea name="text" rows="12" style="width:100%">{{ t.cover_letter or '' }}</textarea>
+    <button name="approve" value="false">Save draft</button> <button class="primary" name="approve" value="true">Save and approve</button>
+  </form>
+</section>
+{% endif %}
+
+{% if answers %}
+<section style="margin:18px 0; padding:14px; border:1px solid var(--line); border-radius:10px">
+  <h3 style="margin:0 0 6px; font-size:16px">Application questions</h3>
+  <p class="muted" style="margin:0 0 8px">Autofill only uses answers you approve.</p>
+  {% for a in answers %}
+  <form hx-post="/job/{{ j.id }}/answer/{{ a.id }}" hx-target="#job-{{ j.id }}" hx-swap="outerHTML" style="margin-bottom:14px">
+    <div><strong>{{ a.question }}</strong>{% if a.required %} <span class="chip">required</span>{% endif %}
+      {% if a.approved %}<span class="chip" style="color:var(--good)">approved</span>{% endif %}</div>
+    {% for w in a.warnings|fromjson %}<div class="chip warn">{{ w }}</div>{% endfor %}
+    <textarea name="text" rows="5" style="width:100%; margin-top:4px">{{ a.final if a.final is not none else (a.draft or '') }}</textarea>
+    <button name="approve" value="false">Save draft</button> <button class="primary" name="approve" value="true">Save and approve</button>
+  </form>
+  {% endfor %}
+</section>
+{% endif %}
+
+<p><button disabled title="Comes with Phase 5">Launch autofill (Phase 5)</button></p>

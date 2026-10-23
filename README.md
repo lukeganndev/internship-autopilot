@@ -21,7 +21,7 @@ reviews and clicks it.
 | 1 | Master profile interview + Jake's Resume PDF | ✅ |
 | 2 | Job sourcing (GitHub lists, Greenhouse, Lever, Ashby, Workday, SmartRecruiters, Oracle, Amazon, Microsoft) | ✅ |
 | 3 | Fit scoring with reasons | ✅ |
-| 4 | Claude Code tailoring + ATS check | ⏳ |
+| 4 | Claude Code tailoring + ATS check | ✅ |
 | 5 | Playwright autofill (stops before submit) | ⏳ |
 | 6 | Local dashboard | 🟡 queue, job details, tracker, settings done; review screen + deadlines come with Phases 4-5 |
 | 7 | Gmail/Outlook status sync + outreach drafts | ⏳ |
@@ -69,6 +69,35 @@ uv run iap queue                     # best matches above your threshold, dream 
 uv run iap why <id>                  # score breakdown + skills the job wants that you don't have
 uv run iap settings threshold strict # strict (70) | balanced (60, default) | broad (45) | any 0-100
 ```
+
+### Tailoring (Phase 4)
+
+```powershell
+uv run iap tailor                    # tailor every approved job (scheduled 9 AM + 6 PM)
+uv run iap tailor --job <id>         # one job now (also a "Tailor now" button in the dashboard)
+# or inside Claude Code:  /tailor-queue
+```
+
+Each approved job gets one headless `claude -p` call (your Claude subscription, Sonnet by default,
+no API key). The call is locked down: no tools, no MCP servers, no user plugins or hooks, and it
+only receives the posting plus your profile's education, items, skills and awards. Contact info,
+address and EEO answers never leave your machine.
+
+Claude proposes which items to show and how to word them. `iap/tailor.py` then verifies the
+proposal against the master profile before anything is rendered:
+
+- every project, course, skill and award must exist in the profile (unknown ones are dropped);
+- every reworded bullet is compared to its source bullet, and reverts to your original wording if
+  it adds a number, a technology, a claim word ("led", "deployed", "users", "won"...) or an
+  excluded name;
+- the result is rendered to one page (trimming the least relevant bullets if needed) and
+  ATS-checked: the share of the posting's tech keywords found in the PDF's extracted text.
+
+Gaps (what the posting wants that you don't have) are listed, never added. Cover letters are only
+written when the application requires one, and answers to custom questions (pulled from
+Greenhouse application forms) are drafts. Both are flagged if they mention numbers or tech not in
+your profile, and nothing is used until you approve it in the dashboard. Edits you make to
+bullets in the dashboard go through the same verifier.
 
 ### How jobs are scored
 

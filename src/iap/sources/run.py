@@ -100,6 +100,8 @@ async def _collect(con, use_boards: bool, watch):
         db.touch(con, [j.key for j in list_jobs if not j.active and j.key in known], active=False)
         candidates = [j for j in board_jobs + list_jobs if j.active]
         db.touch(con, {j.key for j in candidates if j.key in known})
+        relocated = db.update_locations(con, [(j.key, j.location) for j in board_jobs if j.key in known and j.location
+                                              and not re.fullmatch(r"\d+ locations?", j.location, re.I)])
 
         groups: dict[str, list[Job]] = {}
         for j in candidates:
@@ -110,7 +112,7 @@ async def _collect(con, use_boards: bool, watch):
         # Dream companies get their details first, in case the budget runs out.
         need = sorted((g[0] for g in new if not g[0].description), key=lambda j: not filters.is_dream(j.company, watch))
         enriched = await _enrich(c, need)
-    return new, enriched, errors, len(board_jobs), len(list_jobs)
+    return new, enriched, errors, len(board_jobs), len(list_jobs), relocated
 
 
 def _verdict(job: Job, gy, watch):
@@ -136,12 +138,14 @@ async def _backfill(con, gy, watch) -> int:
     return done
 
 
-def refilter(con) -> dict:
-    """Re-apply filters, flags and the watchlist to every stored job (after a rule or settings change).
+def refilter(con, job_ids: list[int] | None = None) -> dict:
+    """Re-apply filters, flags and the watchlist to stored jobs (all, or just `job_ids`).
     Manually added jobs keep being eligible, as on import."""
     gy, watch = grad_year(con), db.get_setting(con, "watchlist")
     changed = 0
-    for r in con.execute("SELECT * FROM jobs").fetchall():
+    rows = (con.execute(f"SELECT * FROM jobs WHERE id IN ({','.join('?' * len(job_ids))})", job_ids).fetchall()
+            if job_ids else con.execute("SELECT * FROM jobs").fetchall())
+    for r in rows:
         manual = con.execute("SELECT 1 FROM job_sources WHERE job_id=? AND source='manual'", (r["id"],)).fetchone()
         j = Job("refilter", r["company"], r["title"], r["url"], location=r["location"],
                 description=r["description"], season=r["season"], key=r["key"])
@@ -160,7 +164,9 @@ def run(con=None, use_boards: bool | None = None) -> dict:
     con.commit()
     use_boards = db.get_setting(con, "direct_boards") if use_boards is None else use_boards
     gy, watch = grad_year(con), db.get_setting(con, "watchlist")
-    new, enriched, errors, n_board, n_list = asyncio.run(_collect(con, use_boards, watch))
+    new, enriched, errors, n_board, n_list, relocated = asyncio.run(_collect(con, use_boards, watch))
+    if relocated:  # boards are authoritative: a job whose real office turns out to be abroad gets re-filtered
+        refilter(con, relocated)
 
     inserted, eligible, dream_hits = 0, 0, []
     for job, *aliases in new:

@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -20,7 +20,7 @@ T.env.filters["fromjson"] = json.loads
 
 PAGE = 100
 ROLES = ["software", "security", "ai/ml/data", "embedded/hardware", "quant", "it/networking"]
-STATUSES = ["approved", "skipped", "applied", "oa", "interview", "offer", "rejected"]
+STATUSES = ["approved", "tailored", "skipped", "applied", "oa", "interview", "offer", "rejected"]
 
 
 def _require_htmx(request: Request) -> None:
@@ -67,21 +67,112 @@ def queue_page(request: Request, q: str = "", role: str = "", dream: bool = Fals
 
 def _job(con, job_id: int):
     r = con.execute(
-        """SELECT j.*, s.score, s.reasons, s.missing, a.status FROM jobs j LEFT JOIN scores s ON s.job_id=j.id
-           LEFT JOIN applications a ON a.job_id=j.id WHERE j.id=?""", (job_id,)).fetchone()
+        """SELECT j.*, s.score, s.reasons, s.missing, a.status, a.notes AS app_notes FROM jobs j
+           LEFT JOIN scores s ON s.job_id=j.id LEFT JOIN applications a ON a.job_id=j.id WHERE j.id=?""", (job_id,)).fetchone()
     if not r:
         raise HTTPException(404, "no such job")
     sources = con.execute("SELECT DISTINCT source FROM job_sources WHERE job_id=?", (job_id,)).fetchall()
     return r, [s["source"] for s in sources]
 
 
+def _panel(request: Request, con, job_id: int, tpl: str = "_job.html", **extra):
+    r, sources = _job(con, job_id)
+    t = con.execute("SELECT * FROM tailored WHERE job_id=?", (job_id,)).fetchone()
+    answers = con.execute("SELECT * FROM answers WHERE job_id=? ORDER BY id", (job_id,)).fetchall()
+    return T.TemplateResponse(request, tpl, {"j": r, "sources": sources, "statuses": STATUSES, "nav": _nav(con),
+                                             "t": t, "spec": json.loads(t["spec"]) if t else None, "answers": answers, **extra})
+
+
 @app.get("/job/{job_id}", response_class=HTMLResponse)
 def job_detail(request: Request, job_id: int):
-    con = db.connect()
-    r, sources = _job(con, job_id)
     # HTMX click from a list → just the panel; direct visit/bookmark → full page around it.
-    tpl = "_job.html" if request.headers.get("HX-Request") else "job_page.html"
-    return T.TemplateResponse(request, tpl, {"j": r, "sources": sources, "statuses": STATUSES, "nav": _nav(con)})
+    return _panel(request, db.connect(), job_id, "_job.html" if request.headers.get("HX-Request") else "job_page.html")
+
+
+@app.get("/job/{job_id}/resume.pdf")
+def resume_pdf(job_id: int):
+    t = db.connect().execute("SELECT pdf_path FROM tailored WHERE job_id=?", (job_id,)).fetchone()
+    if not t or not Path(t["pdf_path"]).exists():
+        raise HTTPException(404, "not tailored yet")
+    return FileResponse(t["pdf_path"], media_type="application/pdf", filename=Path(t["pdf_path"]).name,
+                        content_disposition_type="inline")
+
+
+@app.post("/job/{job_id}/tailor", response_class=HTMLResponse)
+def tailor_now(request: Request, job_id: int):
+    """Tailor this job immediately (one Claude Code call, ~30-60 s) instead of waiting for the batch."""
+    _require_htmx(request)
+    from .. import tailor
+
+    con = db.connect()
+    _job(con, job_id)
+    con.execute("""INSERT INTO applications(job_id, status) VALUES (?, 'approved')
+                   ON CONFLICT(job_id) DO UPDATE SET status='approved', updated_at=datetime('now')""", (job_id,))
+    con.execute("DELETE FROM tailored WHERE job_id=?", (job_id,))
+    con.commit()
+    result = tailor.run(job_id=job_id)
+    error = result["failed"][0]["error"] if result["failed"] else None
+    return _panel(request, db.connect(), job_id, error=error)
+
+
+@app.post("/job/{job_id}/bullets", response_class=HTMLResponse)
+async def edit_bullets(request: Request, job_id: int):
+    """Your edits go through the same verifier as Claude's, then the PDF is re-rendered."""
+    _require_htmx(request)
+    from .. import profile as prof, tailor
+
+    form = await request.form()
+    con = db.connect()
+    job, _ = _job(con, job_id)
+    t = con.execute("SELECT * FROM tailored WHERE job_id=?", (job_id,)).fetchone()
+    if not t:
+        raise HTTPException(404, "not tailored yet")
+    profile, spec = prof.load(), json.loads(t["spec"])
+    sources = {b["id"]: (x, b) for sec in prof.BULLETED for x in profile[sec] for b in x["bullets"]}
+    notes = []
+    for sec in prof.BULLETED:
+        for item in spec[sec]:
+            for b in item["bullets"]:
+                new = " ".join(str(form.get(f"b:{b['id']}", b["text"])).split())
+                if new == b["text"] or b["id"] not in sources:
+                    continue
+                src_item, src = sources[b["id"]]
+                if problem := tailor.check_bullet(new, src["text"], src_item, profile):
+                    notes.append(f"{b['id']}: edit not applied (it {problem}). Change the bullet in your profile first if it's true.")
+                else:
+                    b["text"] = new
+                    notes.append(f"{b['id']}: your edit applied")
+    tailor.render_and_store(con, job, profile, spec, notes, json.loads(t["gaps"]))
+    con.commit()
+    return _panel(request, con, job_id)
+
+
+@app.post("/job/{job_id}/cover", response_class=HTMLResponse)
+def save_cover(request: Request, job_id: int, text: str = Form(""), approve: bool = Form(False)):
+    _require_htmx(request)
+    from .. import profile as prof, tailor
+
+    con = db.connect()
+    job, _ = _job(con, job_id)
+    warns = tailor.free_text_warnings(text, prof.load(), job["description"] or "")
+    con.execute("UPDATE tailored SET cover_letter=?, cover_letter_warnings=?, cover_letter_approved=? WHERE job_id=?",
+                (text, json.dumps(warns), int(approve), job_id))
+    con.commit()
+    return _panel(request, con, job_id)
+
+
+@app.post("/job/{job_id}/answer/{answer_id}", response_class=HTMLResponse)
+def save_answer(request: Request, job_id: int, answer_id: int, text: str = Form(""), approve: bool = Form(False)):
+    _require_htmx(request)
+    from .. import profile as prof, tailor
+
+    con = db.connect()
+    job, _ = _job(con, job_id)
+    warns = tailor.free_text_warnings(text, prof.load(), job["description"] or "")
+    con.execute("UPDATE answers SET final=?, approved=?, warnings=? WHERE id=? AND job_id=?",
+                (text, int(approve), json.dumps(warns), answer_id, job_id))
+    con.commit()
+    return _panel(request, con, job_id)
 
 
 @app.post("/job/{job_id}/status", response_class=HTMLResponse)
@@ -99,8 +190,7 @@ def set_status(request: Request, job_id: int, status: str = Form(...)):
     else:
         raise HTTPException(400, "unknown status")
     con.commit()
-    r, sources = _job(con, job_id)
-    resp = T.TemplateResponse(request, "_job.html", {"j": r, "sources": sources, "statuses": STATUSES, "nav": _nav(con)})
+    resp = _panel(request, con, job_id)
     resp.headers["HX-Trigger"] = json.dumps({"jobDecided": {"id": job_id, "status": status}})
     return resp
 

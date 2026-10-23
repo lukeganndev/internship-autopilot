@@ -16,11 +16,20 @@ async def list_board(c, b) -> list[Job]:
     return await LISTERS[b["ats"]](c, b)
 
 
+def _gh_location(j: dict) -> str:
+    """Greenhouse's display location is often vague ("In-Office", "Hybrid"); the real office lives in a
+    "Job Posting Location"-style metadata field or, on the detail endpoint, in `offices`."""
+    meta = [v for m in j.get("metadata") or [] if "location" in str(m.get("name", "")).lower()
+            for v in (m.get("value") if isinstance(m.get("value"), list) else [m.get("value")]) if v]
+    offices = [o["name"] for o in j.get("offices") or [] if o.get("name")]
+    return "; ".join(dict.fromkeys(meta or offices)) or (j.get("location") or {}).get("name", "")
+
+
 async def _greenhouse(c, b):
     d = (await fetch(c, "GET", f"https://boards-api.greenhouse.io/v1/boards/{b['account']}/jobs")).json()
     return [
         Job("greenhouse", j.get("company_name") or b["company"], j["title"], j["absolute_url"],
-            location=(j.get("location") or {}).get("name", ""),
+            location=_gh_location(j),
             posted_at=iso_date(j.get("first_published") or j.get("updated_at")),
             key=Ref("greenhouse", b["account"], str(j["id"])).key)
         for j in d["jobs"] if _INTERNISH.search(j["title"])
@@ -158,7 +167,7 @@ async def details(c, ref: Ref, url: str) -> dict:
     if a.ats == "greenhouse":
         j = (await fetch(c, "GET", f"https://boards-api.greenhouse.io/v1/boards/{a.account}/jobs/{a.job_id}")).json()
         return {"title": j.get("title", ""), "company": j.get("company_name", ""),
-                "description": html_to_text(j.get("content", "")), "location": (j.get("location") or {}).get("name", "")}
+                "description": html_to_text(j.get("content", "")), "location": _gh_location(j)}
     if a.ats == "lever":
         j = (await fetch(c, "GET", f"https://api.lever.co/v0/postings/{a.account}/{a.job_id}")).json()
         job = _lever_job(j, a.account, "")

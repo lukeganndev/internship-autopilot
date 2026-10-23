@@ -69,6 +69,37 @@ CREATE TABLE IF NOT EXISTS applications (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS tailored (
+    job_id INTEGER PRIMARY KEY REFERENCES jobs(id),
+    spec TEXT NOT NULL,                    -- JSON: the verified selection + bullets the PDF is rendered from
+    pdf_path TEXT NOT NULL,
+    pages INTEGER NOT NULL DEFAULT 1,
+    ats_score INTEGER,                     -- % of the posting's tech keywords found in the PDF text
+    ats_matched TEXT NOT NULL DEFAULT '[]',
+    ats_missing TEXT NOT NULL DEFAULT '[]',
+    gaps TEXT NOT NULL DEFAULT '[]',       -- what the posting wants that the profile doesn't have
+    notes TEXT NOT NULL DEFAULT '[]',      -- verifier corrections, trims
+    cover_letter_required INTEGER NOT NULL DEFAULT 0,
+    cover_letter TEXT,
+    cover_letter_warnings TEXT NOT NULL DEFAULT '[]',
+    cover_letter_approved INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Free-text application questions (from Greenhouse now; autofill adds others) and their drafts.
+CREATE TABLE IF NOT EXISTS answers (
+    id INTEGER PRIMARY KEY,
+    job_id INTEGER NOT NULL REFERENCES jobs(id),
+    question TEXT NOT NULL,
+    required INTEGER NOT NULL DEFAULT 0,
+    draft TEXT,                            -- from Claude
+    final TEXT,                            -- your edited/approved text; autofill only uses this
+    approved INTEGER NOT NULL DEFAULT 0,
+    warnings TEXT NOT NULL DEFAULT '[]',
+    UNIQUE (job_id, question)
+);
+
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL                    -- JSON

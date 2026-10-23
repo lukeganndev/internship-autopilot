@@ -21,8 +21,16 @@
         {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == j.status }}>{{ s }}</option>{% endfor %}
       </select>
       <button hx-post="/job/{{ j.id }}/status" hx-vals='{"status": "queue"}' hx-target="#job-{{ j.id }}" hx-swap="outerHTML">Back to queue</button>
+      {% if j.status in ('approved', 'tailored') and not t %}
+      <button class="primary" hx-post="/job/{{ j.id }}/tailor" hx-target="#job-{{ j.id }}" hx-swap="outerHTML"
+              hx-indicator="#tailoring-{{ j.id }}">Tailor now</button>
+      <span id="tailoring-{{ j.id }}" class="htmx-indicator muted">Tailoring with Claude… (30-60 s)</span>
+      {% endif %}
     {% endif %}
   </div>
+  {% if error %}<p class="chip bad">Tailoring failed: {{ error }}</p>{% elif j.app_notes %}<p class="chip warn">{{ j.app_notes }}</p>{% endif %}
+  {% if j.status == 'approved' and not t %}<p class="muted" style="margin:0">Approved. It gets tailored in the next batch (9 AM / 6 PM), or click Tailor now.</p>{% endif %}
+  {% if t %}{% include "_review.html" %}{% endif %}
 
   {% if j.excluded_reason %}<p class="chip warn">Filtered out: {{ j.excluded_reason }}</p>{% endif %}
   {% set flags = j.flags|fromjson %}

@@ -103,6 +103,26 @@ def test_workday_tenants_share_a_rate_limit_per_data_center():
     assert _limit_key("boards-api.greenhouse.io") == "boards-api.greenhouse.io"
 
 
+def test_greenhouse_real_office_beats_vague_location():
+    from iap.sources.ats import _gh_location
+
+    j = {"location": {"name": "In-Office"},
+         "metadata": [{"name": "Cost Center", "value": "4991"}, {"name": "Job Posting Location", "value": ["Lisbon, Portugal"]}]}
+    assert _gh_location(j) == "Lisbon, Portugal"
+    assert _gh_location({"location": {"name": "In-Office"}, "offices": [{"name": "Austin, TX"}]}) == "Austin, TX"
+    assert _gh_location({"location": {"name": "New York, NY"}}) == "New York, NY"
+
+
+def test_board_locations_update_stored_jobs(tmp_path):
+    from iap import db
+    from iap.sources.common import Job
+
+    con = db.connect(tmp_path / "t.db")
+    jid, _ = db.upsert_job(con, Job("t", "Cloudflare", "SWE Intern", "https://boards.greenhouse.io/cloudflare/jobs/1", location="In-Office"))
+    assert db.update_locations(con, [("greenhouse:cloudflare:1", "Lisbon, Portugal")]) == [jid]
+    assert db.update_locations(con, [("greenhouse:cloudflare:1", "Lisbon, Portugal")]) == []  # unchanged → no-op
+
+
 def test_only_missing_boards_count_as_gone():
     import httpx
     from iap.sources.common import is_gone
