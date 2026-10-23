@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% set active = "settings" %}
+{% block main %}
+<form class="panel" style="padding:18px; max-width:640px" hx-post="/settings">
+  {% if saved %}<p class="chip" style="color:var(--good)">Saved.</p>{% endif %}
+  <h3 style="margin-top:0">Match threshold</h3>
+  <p class="muted">Jobs scoring at or above this go to your queue. Dream companies always do.</p>
+  {% for name, value in presets.items() %}
+  <label style="display:block; margin:4px 0"><input type="radio" name="threshold" value="{{ name }}" {{ 'checked' if threshold == name }}> {{ name }} ({{ value }})</label>
+  {% endfor %}
+  {% set custom = threshold if threshold not in presets else '' %}
+  <label style="display:block; margin:4px 0"><input type="radio" name="threshold" value="{{ custom or 60 }}" id="custom-radio" {{ 'checked' if custom != '' }}>
+    custom <input type="number" min="0" max="100" value="{{ custom or 60 }}" style="width:70px"
+      oninput="const r=document.getElementById('custom-radio'); r.value=this.value; r.checked=true"></label>
+
+  <h3>Dream-company watchlist</h3>
+  <p class="muted">One company per line. Use | for other names it posts under (e.g. <code>Citi|Citigroup|Citibank</code>).
+    Dream companies are highlighted, skip the threshold, and trigger a Windows notification when they post.</p>
+  <textarea name="watchlist" rows="14" style="width:100%">{{ watchlist }}</textarea>
+  <p><button class="primary" type="submit">Save</button></p>
+</form>
+{% endblock %}

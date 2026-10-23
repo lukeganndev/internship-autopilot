@@ -108,6 +108,21 @@ def source(no_boards: bool = typer.Option(False, "--no-boards", help="Only read 
     typer.echo(json.dumps(stats, indent=2))
 
 
+@app.command()
+def dashboard(port: int = typer.Option(8765), open_browser: bool = typer.Option(True, "--open/--no-open")):
+    """Open the local dashboard (http://127.0.0.1:8765). Ctrl+C to stop."""
+    import threading
+    import webbrowser
+
+    import uvicorn
+
+    url = f"http://127.0.0.1:{port}"
+    typer.echo(f"Dashboard at {url}  (Ctrl+C to stop)")
+    if open_browser:
+        threading.Timer(1.2, webbrowser.open, [url]).start()
+    uvicorn.run("iap.web.app:app", host="127.0.0.1", port=port, log_level="warning")
+
+
 @app.command("score")
 def score_jobs():
     """Score every eligible job against your profile (also runs after each `iap source`)."""

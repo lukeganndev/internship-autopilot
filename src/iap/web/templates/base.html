@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Internship Autopilot{% endblock %}</title>
+<script src="/static/htmx.min.js"></script><!-- htmx 1.9.12, BSD-2-Clause, bundled so the dashboard works offline -->
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1b1f24; --muted: #5d6673; --line: #e2e5ea;
+    --accent: #2457d6; --good: #1a7f4b; --bad: #b42318; --warn: #9a6700; --chip: #eef1f5; --dream: #fff4d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216; --panel: #171b21; --text: #e6e9ee; --muted: #9aa4b2; --line: #2a3038;
+      --accent: #7aa2ff; --good: #4cc38a; --bad: #ff7b72; --warn: #e3b341; --chip: #222831; --dream: #2b2614;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+  header .brand { font-weight: 700; margin-right: 8px; }
+  header nav a { margin-right: 14px; color: var(--text); }
+  header nav a.on { color: var(--accent); font-weight: 600; }
+  header .meta { margin-left: auto; color: var(--muted); font-size: 13px; }
+  main { padding: 16px; max-width: 1400px; margin: 0 auto; }
+  .muted { color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .pill { display: inline-block; min-width: 38px; text-align: center; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--chip); }
+  .pill.hi { color: #fff; background: var(--good); }
+  .pill.mid { color: #fff; background: var(--accent); }
+  .chip { display: inline-block; padding: 1px 8px; margin: 2px 4px 2px 0; border-radius: 999px; background: var(--chip); font-size: 13px; }
+  .chip.warn { color: var(--warn); }
+  .chip.bad { color: var(--bad); }
+  .star { color: #d4a017; }
+  button, .btn { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:hover { filter: brightness(0.96); }
+  input, select, textarea { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; }
+</style>
+{% block head %}{% endblock %}
+</head>
+<body>
+<header>
+  <span class="brand">Internship Autopilot</span>
+  <nav>
+    <a href="/" class="{{ 'on' if active == 'queue' }}">Queue ({{ nav.queued }})</a>
+    <a href="/applications" class="{{ 'on' if active == 'apps' }}">Tracker ({{ nav.tracked }})</a>
+    <a href="/settings" class="{{ 'on' if active == 'settings' }}">Settings</a>
+  </nav>
+  <span class="meta">Threshold {{ nav.threshold }} · last fetch {{ nav.last_run or 'never' }} UTC</span>
+</header>
+<main>{% block main %}{% endblock %}</main>
+</body>
+</html>

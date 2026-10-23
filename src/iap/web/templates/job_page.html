@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ j.company }}: {{ j.title }}{% endblock %}
+{% block main %}
+<p><a href="/">← Back to queue</a></p>
+<div class="panel" style="padding:18px; max-width:900px">{% include "_job.html" %}</div>
+{% endblock %}

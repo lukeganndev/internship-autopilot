@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% set active = "queue" %}
+{% block head %}
+<style>
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .filters input[type=search] { flex: 1 1 220px; }
+  .split { display: grid; grid-template-columns: minmax(320px, 2fr) 3fr; gap: 16px; align-items: start; }
+  .list { max-height: calc(100vh - 150px); overflow: auto; }
+  .row { display: grid; grid-template-columns: 52px 1fr; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .row:hover { background: var(--chip); }
+  .row.sel { background: var(--chip); box-shadow: inset 3px 0 0 var(--accent); }
+  .row.dream { background: var(--dream); }
+  .row .t { font-weight: 600; }
+  .row .s { font-size: 13px; color: var(--muted); }
+  .detail { position: sticky; top: 64px; max-height: calc(100vh - 80px); overflow: auto; padding: 18px; }
+  .pager { display: flex; justify-content: space-between; padding: 10px 12px; font-size: 14px; }
+  @media (max-width: 860px) { .split { grid-template-columns: 1fr; } .list, .detail { max-height: none; position: static; } }
+</style>
+{% endblock %}
+{% block main %}
+<form class="filters" method="get" action="/">
+  <input type="search" name="q" value="{{ f.q }}" placeholder="Search company, title or location">
+  <select name="role">
+    <option value="">All roles</option>
+    {% for r in roles %}<option value="{{ r }}" {{ 'selected' if f.role == r }}>{{ r }}</option>{% endfor %}
+  </select>
+  <label>Min score <input type="number" name="min_score" value="{{ f.min_score }}" min="0" max="100" style="width:70px"></label>
+  <label><input type="checkbox" name="dream" value="true" {{ 'checked' if f.dream }}> Dream only</label>
+  <button class="primary" type="submit">Filter</button>
+  <span class="muted">{{ total }} jobs</span>
+</form>
+
+<div class="split">
+  <div class="panel list" id="list">
+    {% for r in rows %}
+    <div class="row {{ 'dream' if r.is_dream }}" id="row-{{ r.id }}"
+         hx-get="/job/{{ r.id }}" hx-target="#detail" hx-swap="innerHTML"
+         onclick="document.querySelectorAll('.row.sel').forEach(e => e.classList.remove('sel')); this.classList.add('sel')">
+      <div><span class="pill {{ 'hi' if r.score >= 80 else 'mid' if r.score >= 60 }}">{{ r.score }}</span></div>
+      <div>
+        <div class="t">{% if r.is_dream %}<span class="star" title="Dream company">★</span> {% endif %}{{ r.title }}</div>
+        <div class="s">{{ r.company }} · {{ r.location or 'location not listed' }}{% if r.season %} · {{ r.season }}{% endif %}</div>
+      </div>
+    </div>
+    {% else %}
+    <p class="muted" style="padding:16px">Nothing matches. Lower the minimum score or clear the filters.</p>
+    {% endfor %}
+    {% if pages > 1 %}
+    <div class="pager">
+      {% set base = '/?q=' ~ (f.q|urlencode) ~ '&role=' ~ (f.role|urlencode) ~ '&min_score=' ~ f.min_score ~ ('&dream=true' if f.dream else '') %}
+      {% if page > 0 %}<a href="{{ base }}&page={{ page - 1 }}">← Prev</a>{% else %}<span></span>{% endif %}
+      <span class="muted">Page {{ page + 1 }} of {{ pages }}</span>
+      {% if page + 1 < pages %}<a href="{{ base }}&page={{ page + 1 }}">Next →</a>{% else %}<span></span>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="panel detail" id="detail">
+    <p class="muted">Click a job to see its score breakdown, missing skills and full description.</p>
+  </div>
+</div>
+
+<script>
+  // After approve/skip, drop the job from the list (the detail pane stays so you can undo).
+  document.body.addEventListener("jobDecided", (e) => {
+    const row = document.getElementById("row-" + e.detail.id);
+    if (row && e.detail.status !== "queue") row.remove();
+  });
+</script>
+{% endblock %}

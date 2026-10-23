@@ -1,0 +1,52 @@
+<div id="job-{{ j.id }}">
+  <div style="display:flex; gap:14px; align-items:flex-start">
+    {% if j.score is not none %}<span class="pill {{ 'hi' if j.score >= 80 else 'mid' if j.score >= 60 }}" style="font-size:22px; padding:6px 12px">{{ j.score }}</span>{% endif %}
+    <div style="flex:1">
+      <h2 style="margin:0 0 2px; font-size:20px">{% if j.is_dream %}<span class="star" title="Dream company">★</span> {% endif %}{{ j.title }}</h2>
+      <div><strong>{{ j.company }}</strong> · {{ j.location or 'location not listed' }}</div>
+      <div class="muted" style="font-size:13px">
+        {{ j.season or 'season not stated' }}{% if j.posted_at %} · posted {{ j.posted_at }}{% endif %} · first seen {{ j.first_seen[:10] }} · via {{ sources|join(', ') }}
+      </div>
+    </div>
+  </div>
+
+  <div style="margin:14px 0; display:flex; flex-wrap:wrap; gap:8px; align-items:center">
+    <a class="btn" href="{{ j.url }}" target="_blank" rel="noopener noreferrer">Open posting ↗</a>
+    {% if not j.status %}
+      <button class="primary" hx-post="/job/{{ j.id }}/status" hx-vals='{"status": "approved"}' hx-target="#job-{{ j.id }}" hx-swap="outerHTML">Approve</button>
+      <button hx-post="/job/{{ j.id }}/status" hx-vals='{"status": "skipped"}' hx-target="#job-{{ j.id }}" hx-swap="outerHTML">Skip</button>
+    {% else %}
+      <span class="chip">Status: <strong>{{ j.status }}</strong></span>
+      <select name="status" hx-post="/job/{{ j.id }}/status" hx-target="#job-{{ j.id }}" hx-swap="outerHTML" hx-trigger="change">
+        {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == j.status }}>{{ s }}</option>{% endfor %}
+      </select>
+      <button hx-post="/job/{{ j.id }}/status" hx-vals='{"status": "queue"}' hx-target="#job-{{ j.id }}" hx-swap="outerHTML">Back to queue</button>
+    {% endif %}
+  </div>
+
+  {% if j.excluded_reason %}<p class="chip warn">Filtered out: {{ j.excluded_reason }}</p>{% endif %}
+  {% set flags = j.flags|fromjson %}
+  {% if flags %}<div>{% for fl in flags %}<span class="chip {{ 'bad' if fl == 'clearance required' else 'warn' if fl in ('co-op', 'no description') }}">{{ fl }}</span>{% endfor %}</div>{% endif %}
+
+  {% if j.reasons %}
+  <h3 style="margin:16px 0 6px; font-size:15px">Why it scored {{ j.score }}</h3>
+  <table>
+    {% for line in j.reasons|fromjson %}
+    {% set pts, _, text = line.partition(' ') %}
+    <tr><td style="width:56px; font-weight:700; color:{{ 'var(--bad)' if pts.startswith('-') else 'var(--muted)' if pts == '+0' else 'var(--good)' }}">{{ pts }}</td><td>{{ text }}</td></tr>
+    {% endfor %}
+  </table>
+  {% set missing = j.missing|fromjson %}
+  {% if missing %}
+  <p style="margin:10px 0 0"><span class="muted">Asked for but not in your profile:</span>
+    {% for m in missing %}<span class="chip warn">{{ m }}</span>{% endfor %}</p>
+  {% endif %}
+  {% endif %}
+
+  <h3 style="margin:18px 0 6px; font-size:15px">Description</h3>
+  {% if j.description %}
+  <div style="white-space:pre-wrap; font-size:14px">{{ j.description }}</div>
+  {% else %}
+  <p class="muted">No description available from this source yet (it gets backfilled on later fetches). Open the posting to read it.</p>
+  {% endif %}
+</div>

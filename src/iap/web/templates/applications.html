@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% set active = "apps" %}
+{% block main %}
+<div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px">
+  <a class="btn" href="/applications" {% if not status %}style="border-color:var(--accent)"{% endif %}>All active</a>
+  {% for s in statuses %}
+  <a class="btn" href="/applications?status={{ s }}" {% if status == s %}style="border-color:var(--accent)"{% endif %}>{{ s }} ({{ counts.get(s, 0) }})</a>
+  {% endfor %}
+</div>
+<div class="panel" style="overflow-x:auto">
+<table>
+  <tr><th>Score</th><th>Job</th><th>Status</th><th>Updated</th></tr>
+  {% for r in rows %}
+  <tr>
+    <td><span class="pill {{ 'hi' if (r.score or 0) >= 80 else 'mid' if (r.score or 0) >= 60 }}">{{ r.score if r.score is not none else '–' }}</span></td>
+    <td><a href="/job/{{ r.id }}"><strong>{{ r.title }}</strong></a><div class="muted" style="font-size:13px">{% if r.is_dream %}<span class="star">★</span> {% endif %}{{ r.company }} · {{ r.location }}</div></td>
+    <td><span class="chip">{{ r.status }}</span></td>
+    <td class="muted" style="font-size:13px">{{ r.updated_at[:16] }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4" class="muted">Nothing here yet. Approve jobs from the queue and they show up here.</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

@@ -23,7 +23,7 @@ reviews and clicks it.
 | 3 | Fit scoring with reasons | ✅ |
 | 4 | Claude Code tailoring + ATS check | ⏳ |
 | 5 | Playwright autofill (stops before submit) | ⏳ |
-| 6 | Local dashboard | ⏳ |
+| 6 | Local dashboard | 🟡 queue, job details, tracker, settings done; review screen + deadlines come with Phases 4-5 |
 | 7 | Gmail/Outlook status sync + outreach drafts | ⏳ |
 
 ## Setup (Windows)
@@ -60,6 +60,9 @@ uv run iap source                    # one pass over every source (first run tak
 uv run iap jobs                      # newest eligible jobs (--all shows filtered ones + why, --dream, -s text)
 uv run iap add <url>                 # import a listing you found yourself
 .\scripts\install_tasks.ps1          # run `iap source` every 2h + at logon (Task Scheduler)
+
+# Dashboard: click through the queue, see score breakdowns, approve/skip, track applications
+uv run iap dashboard                 # opens http://127.0.0.1:8765 (local only)
 
 # Matching (runs automatically after every `iap source`)
 uv run iap queue                     # best matches above your threshold, dream companies first
