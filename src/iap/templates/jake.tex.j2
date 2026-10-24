@@ -126,7 +126,7 @@
 \section{Projects}
   \resumeSubHeadingListStart
 <% for x in p.projects %>
-    \resumeProjectHeading{<% if x.link %>\href{<< x.link|url >>}{\textbf{<< x.name|e >>}}<% else %>\textbf{<< x.name|e >>}<% endif %><% if x.tech %> $|$ \emph{<< x.tech|join(", ")|e >>}<% endif %>}{<< x|dates >>}
+    \resumeProjectHeading{<% if x.link %>\href{<< x.link|url >>}{\textbf{<< x.name|e >>}}<% else %>\textbf{<< x.name|e >>}<% endif %><# The heading row can't wrap, so long tech lists would run into the dates. #><% if x.tech %> $|$ \emph{<< x.tech[:6]|join(", ")|e >>}<% endif %>}{<< x|dates >>}
 << bullets(x) >>
 <% endfor %>
   \resumeSubHeadingListEnd
